@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using TheQueue.Server.Core.Services;
 
-namespace TheQueue.Server
+namespace TheQueue.Server.Core
 {
     public static class ServiceCollectionExtensions
     {
