@@ -531,3 +531,4 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
+/TheQueue.Client
