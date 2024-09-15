@@ -36,9 +36,7 @@ namespace TheQueue.Server.Core.Services
                     _logger.LogInformation("Received message, {message}", message);
 
                     if (message is null)
-                    {
                         _logger.LogInformation($"Received empty message");
-                    }
 
                     // serialize to msg
                     ClientMessage deserialized = JsonSerializer.Deserialize<ClientMessage>(message);
