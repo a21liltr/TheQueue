@@ -10,6 +10,7 @@ namespace TheQueue.Server.Core.Models
         public ClientMessage(string name)
         {
             Name = name;
+            MessageType = MessageType.Queue;
         }
     }
 }

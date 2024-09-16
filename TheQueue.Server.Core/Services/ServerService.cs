@@ -5,6 +5,7 @@ using NetMQ.Sockets;
 using TheQueue.Server.Core.Models;
 using System.Text.Json;
 using TheQueue.Server.Core.Enums;
+using System.ServiceModel.Channels;
 
 namespace TheQueue.Server.Core.Services
 {
@@ -43,10 +44,15 @@ namespace TheQueue.Server.Core.Services
 
                     // switch check msg type
                     MessageType messageType = deserialized.MessageType;
-                    switch(messageType)
+
+                    // TODO: Handle properly.
+                    // Check if exists
+                    // Check what client wants to do
+                    switch (messageType)
                     {
                         case MessageType.Connect:
-                            AddClient(deserialized);
+                            // TODO: Return list of queued clients ?
+                            // Should be able to see list before queueing ?
                             break;
                         case MessageType.Disconnect:
                             RemoveClient(deserialized.Name);
@@ -57,10 +63,11 @@ namespace TheQueue.Server.Core.Services
                             break;
                         case MessageType.Queue:
                             // TODO:
+                            AddClient(deserialized);
                             // AddToQueue();
                             break;
                         case MessageType.Dequeue:
-                            // TODO:
+                            // TODO: If doesn't need help (anymore) but want to be connected and see queue.
                             // DequeueSelf();
                             break;
                         case MessageType.DequeueStudent:
@@ -70,33 +77,31 @@ namespace TheQueue.Server.Core.Services
                             // DequeueStudent();
                             break;
                         default:
-                            _logger.LogWarning("Error: Could not find MessageType from incoming Message.");
+                            //_logger.LogWarning("Error: Could not find MessageType from incoming Message.");
+                            _logger.LogInformation("Case for {messageType} not implementet yet", messageType);
                             break;
                     }
 
+                    Console.WriteLine($"Received message with type {messageType}:\n" +
+                        $"from \"{message}\"");
 
-                    Console.WriteLine($"Received message:\n" +
-                        $"\"{message}\"");
-
-                    AddClient(new ClientMessage(message));
-
-                    string queue = string.Empty;
-                    foreach (var connected in _clientQueue)
-                    {
-                        queue += $"{connected.Name}\n";
-                    }
-
-                    responder.SendFrame($"Message \"{message}\" has been received." +
-                        $"\nNew student with name {message} added to queue." +
-                        $"\nStudents in queue:" +
-                        $"{queue}");
+                    responder.SendFrame(GetQueue(message));
                 }
             }
         }
 
-        public List<ClientMessage> GetAll()
+        public string GetQueue(string message)
         {
-            return _clientQueue;
+            string queue = string.Empty;
+            foreach (var connected in _clientQueue)
+            {
+                queue += $"\n{connected.Name}\n";
+            }
+
+            return $"Message \"{message}\" has been received." +
+                $"\nNew student with name {message} added to queue." +
+                $"\nStudents in queue:" +
+                $"{queue}";
         }
 
         public List<ClientMessage> AddClient(ClientMessage student)
