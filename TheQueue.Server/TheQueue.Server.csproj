@@ -23,7 +23,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TheQueue.Server.Core\TheQueue.Server.Core.csproj" />
-    <ProjectReference Include="..\TheQueue.Server.DLL\TheQueue.Server.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
