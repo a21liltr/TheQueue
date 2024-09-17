@@ -12,6 +12,7 @@
         Dequeue = 4,
 
         // Used only by Supervisor
-        DequeueStudent = 5
+        DequeueStudent = 5,
+        NextUp = 6
     }
 }

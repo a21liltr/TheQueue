@@ -2,10 +2,6 @@
 using Microsoft.Extensions.Logging;
 using NetMQ;
 using NetMQ.Sockets;
-using TheQueue.Server.Core.Models;
-using System.Text.Json;
-using TheQueue.Server.Core.Enums;
-using System.ServiceModel.Channels;
 
 namespace TheQueue.Server.Core.Services
 {
@@ -13,14 +9,14 @@ namespace TheQueue.Server.Core.Services
     {
         private readonly ILogger<ServerService> _logger;
         private readonly IConfiguration _config;
-        private List<ClientMessage> _clientQueue;
+        private List<string> _clientQueue;
 
         public ServerService(ILogger<ServerService> logger,
             IConfiguration config)
         {
             _logger = logger;
             _config = config;
-            _clientQueue = new List<ClientMessage>();
+            _clientQueue = new List<string>();
             var test = _config.GetValue<string>("test");
         }
 
@@ -40,50 +36,52 @@ namespace TheQueue.Server.Core.Services
                         _logger.LogInformation($"Received empty message");
 
                     // serialize to msg
-                    ClientMessage deserialized = JsonSerializer.Deserialize<ClientMessage>(message);
+                    //ClientMessage deserialized = JsonSerializer.Deserialize<ClientMessage>(message);
 
                     // switch check msg type
-                    MessageType messageType = deserialized.MessageType;
+                    //MessageType messageType = deserialized.MessageType;
 
                     // TODO: Handle properly.
                     // Check if exists
                     // Check what client wants to do
-                    switch (messageType)
-                    {
-                        case MessageType.Connect:
-                            // TODO: Return list of queued clients ?
-                            // Should be able to see list before queueing ?
-                            break;
-                        case MessageType.Disconnect:
-                            RemoveClient(deserialized.Name);
-                            break;
-                        case MessageType.Heartbeat:
-                            // TODO:
-                            // ResetHeartbeatTimer();
-                            break;
-                        case MessageType.Queue:
-                            // TODO:
-                            AddClient(deserialized);
-                            // AddToQueue();
-                            break;
-                        case MessageType.Dequeue:
-                            // TODO: If doesn't need help (anymore) but want to be connected and see queue.
-                            // DequeueSelf();
-                            break;
-                        case MessageType.DequeueStudent:
-                            // TODO:
-                            // Supervisor only!
-                            // check if authorised
-                            // DequeueStudent();
-                            break;
-                        default:
-                            //_logger.LogWarning("Error: Could not find MessageType from incoming Message.");
-                            _logger.LogInformation("Case for {messageType} not implementet yet", messageType);
-                            break;
-                    }
+                    //switch (messageType)
+                    //{
+                    //    case MessageType.Connect:
+                    //        // TODO: Return list of queued clients ?
+                    //        // Should be able to see list before queueing ?
+                    //        break;
+                    //    case MessageType.Disconnect:
+                    //        RemoveClient(deserialized.Name);
+                    //        break;
+                    //    case MessageType.Heartbeat:
+                    //        // TODO:
+                    //        // ResetHeartbeatTimer();
+                    //        break;
+                    //    case MessageType.Queue:
+                    //        // TODO:
+                    //        AddClient(deserialized);
+                    //        // AddToQueue();
+                    //        break;
+                    //    case MessageType.Dequeue:
+                    //        // TODO: If doesn't need help (anymore) but want to be connected and see queue.
+                    //        // DequeueSelf();
+                    //        break;
+                    //    case MessageType.DequeueStudent:
+                    //        // TODO:
+                    //        // Supervisor only!
+                    //        // check if authorised
+                    //        // DequeueStudent();
+                    //        break;
+                    //    default:
+                    //        //_logger.LogWarning("Error: Could not find MessageType from incoming Message.");
+                    //        _logger.LogInformation("Case for {messageType} not implementet yet", messageType);
+                    //        break;
+                    //}
 
-                    Console.WriteLine($"Received message with type {messageType}:\n" +
+                    Console.WriteLine($"Received message:\n" +
                         $"from \"{message}\"");
+
+                    _clientQueue.Add(message);
 
                     responder.SendFrame(GetQueue(message));
                 }
@@ -95,7 +93,7 @@ namespace TheQueue.Server.Core.Services
             string queue = string.Empty;
             foreach (var connected in _clientQueue)
             {
-                queue += $"\n{connected.Name}\n";
+                queue += $"\n{connected}\n";
             }
 
             return $"Message \"{message}\" has been received." +
@@ -104,33 +102,33 @@ namespace TheQueue.Server.Core.Services
                 $"{queue}";
         }
 
-        public List<ClientMessage> AddClient(ClientMessage student)
-        {
-            _clientQueue.Add(student);
-            return _clientQueue;
-        }
-        public List<ClientMessage> RemoveClient(string name)
-        {
-            ClientMessage student = GetConnectedClient(name);
-            if (name is null || student.Name == string.Empty)
-                return _clientQueue;
+        //public List<ClientMessage> AddClient(ClientMessage student)
+        //{
+        //    _clientQueue.Add(student);
+        //    return _clientQueue;
+        //}
+        //public List<ClientMessage> RemoveClient(string name)
+        //{
+        //    ClientMessage student = GetConnectedClient(name);
+        //    if (name is null || student.Name == string.Empty)
+        //        return _clientQueue;
 
-            _clientQueue.Remove(student);
+        //    _clientQueue.Remove(student);
 
-            return _clientQueue;
-        }
+        //    return _clientQueue;
+        //}
 
-        public ClientMessage GetConnectedClient(string name)
-        {
-            if (!_clientQueue.Exists(x => x.Name == name))
-                return new ClientMessage(name);
+        //public ClientMessage GetConnectedClient(string name)
+        //{
+        //    if (!_clientQueue.Exists(x => x.Name == name))
+        //        return new ClientMessage(new ConnectedClient(name), MessageType.Connect);
 
-            return _clientQueue.Find(s => s.Name == name)!;
-        }
+        //    return _clientQueue.Find(s => s.Name == name)!;
+        //}
 
-        private void ResetHeartbeatTimer(ConnectedClient client)
-        {
-            client.HeartbeatTimer = 0;
-        }
+        //private void ResetHeartbeatTimer(ConnectedClient client)
+        //{
+        //    client.HeartbeatTimer = 0;
+        //}
     }
 }

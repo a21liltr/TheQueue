@@ -1,5 +1,4 @@
-﻿using System.Xml.Linq;
-using TheQueue.Server.Core.Enums;
+﻿using TheQueue.Server.Core.Enums;
 
 namespace TheQueue.Server.Core.Models
 {
