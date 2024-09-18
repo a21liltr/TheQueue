@@ -2,50 +2,83 @@
 using Microsoft.Extensions.Logging;
 using NetMQ;
 using NetMQ.Sockets;
-using System.Text.Json;
 
 namespace TheQueue.Server.Core.Services
 {
-    public class ServerService
-    {
-        private readonly ILogger<ServerService> _logger;
-        private readonly IConfiguration _config;
-        private List<string> _clientQueue;
+	public class ServerService
+	{
+		private readonly ILogger<ServerService> _logger;
+		private readonly IConfiguration _config;
+		private List<string> _clientQueue;
 
-        public ServerService(ILogger<ServerService> logger,
-            IConfiguration config)
-        {
-            _logger = logger;
-            _config = config;
-            _clientQueue = new List<string>();
-            var test = _config.GetValue<string>("test");
-        }
+		private bool serverIsRunning = true;
 
-        public void RunServer()
-        {
-            using (var responder = new ResponseSocket())
-            {
-                responder.Bind("tcp://*:5555");
+		private Queue<string> broadcastQueue; // type should be message
 
-                while (true)
-                {
-                    string message = responder.ReceiveFrameString();
-                    _logger.LogInformation("Received message, {message}", message);
+		public ServerService(ILogger<ServerService> logger,
+			IConfiguration config)
+		{
+			_logger = logger;
+			_config = config;
+			_clientQueue = new List<string>();
+			var test = _config.GetValue<string>("test");
+		}
 
-                    if (message is null)
-                    {
-                        _logger.LogInformation($"Received empty message");
-                        continue;
-                    }
+		public void RunServer(string address)
+		{
+			Task rrServer = Task.Run(() => { RunRequestReplyServer(address); });
+			Task psServer = Task.Run(() => { RunPubSubServer(address); });
 
-                    // TODO: Handle properly.
-                    
+			Task.WaitAll(rrServer, psServer);
+		}
 
-                    _logger.LogInformation($"Received message");
+		public void ShutdownServer()
+		{
+			serverIsRunning = false;
+		}
 
-                    responder.SendFrame($"Server has received message:\n{message}");
-                }
-            }
-        }
-    }
+		private void RunRequestReplyServer(string address)
+		{
+			using (var responder = new ResponseSocket())
+			{
+				responder.Bind("tcp://*:5555"); //port?
+
+				while (serverIsRunning)
+				{
+					string message = responder.ReceiveFrameString();
+					_logger.LogInformation("Received message, {message}", message);
+
+					if (message is null)
+					{
+						_logger.LogInformation($"Received empty message");
+						continue;
+					}
+
+					// TODO: Handle properly.
+
+
+					_logger.LogInformation($"Received message");
+
+					responder.SendFrame($"Server has received message:\n{message}");
+				}
+			}
+		}
+
+		private void RunPubSubServer(string address)
+		{
+			using (var responder = new PublisherSocket())
+			{
+				responder.Bind("tcp://*:5555"); //port?
+				while (serverIsRunning)
+				{
+					// peek at queue
+
+					// if any -> dequeue and broadcast
+
+
+					Thread.Sleep(1000);
+				}
+			}
+		}
+	}
 }
