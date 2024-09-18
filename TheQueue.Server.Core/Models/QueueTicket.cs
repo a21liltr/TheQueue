@@ -2,11 +2,12 @@
 {
     public class QueueTicket
     {
-        public ConnectedClient Client { get; set; }
+        public string Name { get; set; }
         public int Ticket { get; set; }
-        public QueueTicket(ConnectedClient client, int ticketNumber)
+
+        public QueueTicket(string name, int ticketNumber)
         {
-            Client = client;
+            Name = name;
             Ticket = ticketNumber;
         }
     }

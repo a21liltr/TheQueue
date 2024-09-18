@@ -1,18 +1,14 @@
-﻿using TheQueue.Server.Core.Enums;
-
-namespace TheQueue.Server.Core.Models
+﻿namespace TheQueue.Server.Core.Models
 {
     public class ConnectedClient
     {
-        public string Name { get; set; }
-        public int HeartbeatTimer { get; set; }
-        public ConnectionType ConnectionType { get; set; }
+        public Guid ClientId { get; set; }
+        public string ClientName { get; set; } = string.Empty;
 
-        public ConnectedClient(string name, ConnectionType connectionType = ConnectionType.Student)
+        public ConnectedClient(string name)
         {
-            Name = name;
-            HeartbeatTimer = 0;
-            ConnectionType = connectionType;
+            ClientId = Guid.NewGuid();
+            ClientName = name;
         }
     }
 }
