@@ -25,7 +25,7 @@ namespace TheQueue.Server.Core.Services
         {
             using (var responder = new ResponseSocket())
             {
-                responder.Bind("tcp://*:5556");
+                responder.Bind("tcp://*:5555");
 
                 while (true)
                 {
@@ -41,7 +41,7 @@ namespace TheQueue.Server.Core.Services
                     // TODO: Handle properly.
                     
 
-                    Console.WriteLine($"Received message");
+                    _logger.LogInformation($"Received message");
 
                     responder.SendFrame($"Server has received message:\n{message}");
                 }
