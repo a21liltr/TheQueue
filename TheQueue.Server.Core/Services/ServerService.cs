@@ -2,6 +2,8 @@
 using Microsoft.Extensions.Logging;
 using NetMQ;
 using NetMQ.Sockets;
+using Newtonsoft.Json;
+using TheQueue.Server.Core.Models.ServerMessages;
 
 namespace TheQueue.Server.Core.Services
 {
@@ -9,7 +11,7 @@ namespace TheQueue.Server.Core.Services
 	{
 		private readonly ILogger<ServerService> _logger;
 		private readonly IConfiguration _config;
-		private List<string> _clientQueue;
+		private List<QueueTicket> _queue;
 
 		private bool serverIsRunning = true;
 
@@ -20,16 +22,17 @@ namespace TheQueue.Server.Core.Services
 		{
 			_logger = logger;
 			_config = config;
-			_clientQueue = new List<string>();
+			_queue = new List<QueueTicket>();
 			var test = _config.GetValue<string>("test");
 		}
 
-		public void RunServer(string address)
+		public void RunServer()
 		{
-			Task rrServer = Task.Run(() => { RunRequestReplyServer(address); });
-			Task psServer = Task.Run(() => { RunPubSubServer(address); });
+			var port = 5555;
+            Task rrServer = Task.Run(() => { RunRequestReplyServer($"tcp://*:{port}"); });
+			//Task psServer = Task.Run(() => { RunPubSubServer($"tcp://*:{port+1}"); });
 
-			Task.WaitAll(rrServer, psServer);
+			Task.WaitAll(rrServer);
 		}
 
 		public void ShutdownServer()
@@ -41,8 +44,8 @@ namespace TheQueue.Server.Core.Services
 		{
 			using (var responder = new ResponseSocket())
 			{
-				responder.Bind("tcp://*:5555"); //port?
-
+				responder.Bind(address); //port?
+				_logger.LogInformation("Server running");
 				while (serverIsRunning)
 				{
 					string message = responder.ReceiveFrameString();
@@ -56,10 +59,22 @@ namespace TheQueue.Server.Core.Services
 
 					// TODO: Handle properly.
 
-
+					//QueueTicket received = DeserializeJSON(message);
 					_logger.LogInformation($"Received message");
 
-					responder.SendFrame($"Server has received message:\n{message}");
+					// kolla valid medddelande
+					// kolla vad meddelande
+					// deserialze meddelande
+					// gör saker
+
+					QueueTicket test = new QueueTicket
+					{
+						Name = "test",
+						Ticket = _queue.Select(t => t.Ticket).LastOrDefault() + 1
+					};
+					_queue.Add(test);
+
+                    responder.SendFrame(JsonConvert.SerializeObject(test));
 				}
 			}
 		}
@@ -68,7 +83,7 @@ namespace TheQueue.Server.Core.Services
 		{
 			using (var responder = new PublisherSocket())
 			{
-				responder.Bind("tcp://*:5555"); //port?
+				responder.Bind(address); //port?
 				while (serverIsRunning)
 				{
 					// peek at queue
@@ -80,5 +95,12 @@ namespace TheQueue.Server.Core.Services
 				}
 			}
 		}
+
+		private QueueTicket DeserializeJSON(string message)
+		{
+            return JsonConvert.DeserializeObject<QueueTicket>(message);
+        }
+
+		
 	}
 }
