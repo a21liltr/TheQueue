@@ -3,6 +3,9 @@ using Microsoft.Extensions.Logging;
 using NetMQ;
 using NetMQ.Sockets;
 using Newtonsoft.Json;
+using System.Text.RegularExpressions;
+using TheQueue.Server.Core.Models.BroadcastMessages;
+using TheQueue.Server.Core.Models.ClientMessages;
 using TheQueue.Server.Core.Models.ServerMessages;
 
 namespace TheQueue.Server.Core.Services
@@ -15,7 +18,7 @@ namespace TheQueue.Server.Core.Services
 
 		private bool serverIsRunning = true;
 
-		private Queue<string> broadcastQueue; // type should be message
+		private Queue<UserMessages> broadcastQueue; // type should be message
 
 		public ServerService(ILogger<ServerService> logger,
 			IConfiguration config)
@@ -51,15 +54,16 @@ namespace TheQueue.Server.Core.Services
 					string message = responder.ReceiveFrameString();
 					_logger.LogInformation("Received message, {message}", message);
 
-					if (message is null)
+					if (string.IsNullOrEmpty(message))
 					{
-						_logger.LogInformation($"Received empty message");
+						_logger.LogWarning($"Received bad message");
+						_ = responder.TrySignalError();
 						continue;
 					}
 
 					// TODO: Handle properly.
 
-					//QueueTicket received = DeserializeJSON(message);
+					var received = (EnterQueueRequest) DeserializeJSON(message);
 					_logger.LogInformation($"Received message");
 
 					// kolla valid medddelande
@@ -67,14 +71,17 @@ namespace TheQueue.Server.Core.Services
 					// deserialze meddelande
 					// gör saker
 
-					QueueTicket test = new QueueTicket
+					if (received.EnterQueue)
 					{
-						Name = "test",
-						Ticket = _queue.Select(t => t.Ticket).LastOrDefault() + 1
-					};
-					_queue.Add(test);
+						QueueTicket test = new QueueTicket
+						{
+							Name = "test",
+							Ticket = _queue.Select(t => t.Ticket).LastOrDefault() + 1
+						};
+						_queue.Add(test);
 
-                    responder.SendFrame(JsonConvert.SerializeObject(test));
+						responder.SendFrame(JsonConvert.SerializeObject(test));
+					}
 				}
 			}
 		}
@@ -87,20 +94,21 @@ namespace TheQueue.Server.Core.Services
 				while (serverIsRunning)
 				{
 					// peek at queue
-
 					// if any -> dequeue and broadcast
-
+					if (broadcastQueue.Peek() != null)
+					{
+						var message = broadcastQueue.Dequeue();
+						responder.SendFrame($"Supervisor {message.Supervisor} announces {message.Message}");
+					}
 
 					Thread.Sleep(1000);
 				}
 			}
 		}
 
-		private QueueTicket DeserializeJSON(string message)
+		private object DeserializeJSON(string json)
 		{
-            return JsonConvert.DeserializeObject<QueueTicket>(message);
-        }
-
-		
+			return JsonConvert.DeserializeObject(json);
+		}
 	}
 }
