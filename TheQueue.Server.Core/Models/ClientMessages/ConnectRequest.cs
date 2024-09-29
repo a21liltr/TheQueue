@@ -1,8 +1,9 @@
 ﻿namespace TheQueue.Server.Core.Models.ClientMessages
 {
-    public class EnterQueueRequest : RequestBase
+    public class ConnectRequest : RequestBase
     {
         public string Name { get; set; }
         public bool EnterQueue { get; set; }
+        public bool? IsSupervisor { get; set; }
     }
 }

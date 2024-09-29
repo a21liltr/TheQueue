@@ -17,8 +17,8 @@ namespace TheQueue.Server.Core.Services
 		private bool _serverIsRunning = true;
 
 		private Queue<string> _broadcastQueue; // type should be message
-		private List<QueuedClient> _connectedClients; // how supervisor connect?
-		private List<string> _queue; // queue of names
+		private List<ConnectedClient> _connectedClients; // how supervisor connect?
+		private List<QueueTicket> _queue; // queue of names
 
 		public ServerService(ILogger<ServerService> logger,
 			IConfiguration config)
@@ -26,9 +26,9 @@ namespace TheQueue.Server.Core.Services
 			_logger = logger;
 			_config = config;
 			var test = _config.GetValue<string>("test");
-			_broadcastQueue = new Queue<string>();
-			_connectedClients = new List<QueuedClient>();
-			_queue = new List<string>();
+			_broadcastQueue = new();
+			_connectedClients = new();
+			_queue = new();
 		}
 
 		public void RunServer()
@@ -48,7 +48,7 @@ namespace TheQueue.Server.Core.Services
 
 		private void RunRequestReplyServer(string address)
 		{
-			using (var responder = new ResponseSocket())
+			using (ResponseSocket responder = new())
 			{
 				responder.Bind(address); //port?
 				_logger.LogInformation("Server running");
@@ -76,11 +76,17 @@ namespace TheQueue.Server.Core.Services
 					_logger.LogDebug($"Deserialized message to ClientMessage object");
 
 					// validation on properties
+					HandleConnect(received);
 
-					if (received.EnterQueue.HasValue)
+					if (received.SuperVisor.HasValue && received.SuperVisor.Value)
+					{
+						// upate supervisor list
+						// publish supervisor list & queue list
+					}
+					else if (received.EnterQueue.HasValue)
 					{
 						var response = HandleEnterQueueMessage(received);
-						string responseMessage = JsonConvert.SerializeObject(response);
+						var responseMessage = JsonConvert.SerializeObject(response);
 						responder.SendFrame(responseMessage);
 					}
 					else if (received.Message is not null)
@@ -103,7 +109,7 @@ namespace TheQueue.Server.Core.Services
 
 		private void RunPubSubServer(string address)
 		{
-			using (var publisher = new PublisherSocket())
+			using (PublisherSocket publisher = new())
 			{
 				publisher.Bind(address); //port?
 				while (_serverIsRunning)
@@ -123,41 +129,66 @@ namespace TheQueue.Server.Core.Services
 			}
 		}
 
-		private QueueTicket HandleEnterQueueMessage(ClientMessage message)
+		private void HandleConnect(ClientMessage message)
 		{
+			_logger.LogInformation("Handling Connection for ClientId {client}", message.ClientId);
 			if (!_connectedClients.Any(x => x.ClientId == message.ClientId))
 			{
-				var client = new QueuedClient();
-				client.ClientId = message.ClientId;
-				client.Name = message.Name ?? ""; // handle properly
+				ConnectedClient client = new()
+				{
+					ClientId = message.ClientId,
+					Name = message.Name ?? $"Client_{_queue.Count + 1}"
+				};
 				client.OnDisconnect += OnDisconnect;
-
 				_connectedClients.Add(client);
+				_logger.LogInformation("Connected ClientId {client}", message.ClientId);
 			}
+		}
 
+		private QueueTicket HandleEnterQueueMessage(ClientMessage message)
+		{
 			if (message.EnterQueue.Value)
 			{
 				// add to queue
-				if (!_queue.Any(x => x == message.Name))
+				if (!_queue.Any(x => x.Name == message.Name))
 				{
-					_queue.Add(message.Name);
+					QueueTicket ticket = new()
+					{
+						Name = message.Name,
+						Ticket = _queue.Count() + 1
+					};
+					_queue.Add(ticket);
 				}
-				// broadcast updated queue
-
+				return _queue.First(x => x.Name == message.Name);
 			}
+
 			return new QueueTicket
 			{
-				Name = message.Name,
-				Ticket = _queue.IndexOf(message.Name) + 1
+				Name = message.Name ?? message.ClientId,
+				Ticket = -1
 			};
 		}
 
-		private void OnDisconnect(string clientId)
+		private void OnDisconnect(string clientId, string name)
 		{
 			var disconnectedClient = _connectedClients.FirstOrDefault(x => x.ClientId == clientId);
-			_connectedClients.Remove(disconnectedClient);
+			if (disconnectedClient is null)
+			{
+				_logger.LogWarning("ClientId {wrongId} could not be found", clientId);
+			}
+
+			if (disconnectedClient is not null)
+			{
+				_connectedClients.Remove(disconnectedClient);
+				if (!_connectedClients.Any(x => x.Name == name))
+				{
+					_queue.Remove(_queue.First(x => x.Name == name));
+				}
+			}
 
 			// if need broadcast - do
+
+
 		}
 
 		private void HandleMessageRequest(ClientMessage message)
