@@ -17,6 +17,7 @@ namespace TheQueue.Server.Core.Services
 
 		private bool _serverIsRunning = true;
 
+		private int _port;
 		private Queue<string> _broadcastQueue; // type should be message
 		private List<ConnectedClient> _connectedClients; // how supervisor connect?
 		private List<QueueTicket> _queue; // queue of names
@@ -27,7 +28,7 @@ namespace TheQueue.Server.Core.Services
 		{
 			_logger = logger;
 			_config = config;
-			var test = _config.GetValue<string>("test");
+			_port = _config.GetValue<int>("Port");
 			_broadcastQueue = new();
 			_connectedClients = new();
 			_queue = new();
@@ -36,10 +37,8 @@ namespace TheQueue.Server.Core.Services
 
 		public void RunServer()
 		{
-			var port = 5555;
-			//Task rrServer = Task.Run(() => { RunRequestReplyServer($"tcp://localhost:{port}"); });
-			Task rrServer = Task.Run(() => { test(); });
-			Task psServer = Task.Run(() => { RunPubSubServer($"tcp://localhost:{port + 1}"); });
+			Task rrServer = Task.Run(() => { RunRequestReplyServer($"tcp://localhost:{_port}"); });
+			Task psServer = Task.Run(() => { RunPubSubServer($"tcp://localhost:{_port + 1}"); });
 
 			Task.WaitAll(rrServer, psServer);
 		}
@@ -47,6 +46,7 @@ namespace TheQueue.Server.Core.Services
 		public void ShutdownServer()
 		{
 			_serverIsRunning = false;
+			File.WriteAllText("\\\\queue.json", string.Empty);
 		}
 
 		private void RunRequestReplyServer(string address)
