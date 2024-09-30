@@ -8,6 +8,6 @@ namespace TheQueue.Server.Core.Models
 	{
 		public string Name { get; set; }
 		public Status Status { get; set; }
-		public QueueTicket Client { get; set; }
+		public QueueTicket? Client { get; set; }
 	}
 }

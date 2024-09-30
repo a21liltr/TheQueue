@@ -4,6 +4,7 @@ using NetMQ;
 using NetMQ.Sockets;
 using Newtonsoft.Json;
 using TheQueue.Server.Core.Models;
+using TheQueue.Server.Core.Models.BroadcastMessages;
 using TheQueue.Server.Core.Models.ClientMessages;
 using TheQueue.Server.Core.Models.ServerMessages;
 
@@ -19,6 +20,7 @@ namespace TheQueue.Server.Core.Services
 		private Queue<string> _broadcastQueue; // type should be message
 		private List<ConnectedClient> _connectedClients; // how supervisor connect?
 		private List<QueueTicket> _queue; // queue of names
+		private List<Supervisor> _supervisors;
 
 		public ServerService(ILogger<ServerService> logger,
 			IConfiguration config)
@@ -29,6 +31,7 @@ namespace TheQueue.Server.Core.Services
 			_broadcastQueue = new();
 			_connectedClients = new();
 			_queue = new();
+			_supervisors = new();
 		}
 
 		public void RunServer()
@@ -81,7 +84,17 @@ namespace TheQueue.Server.Core.Services
 					if (received.SuperVisor.HasValue && received.SuperVisor.Value)
 					{
 						// upate supervisor list
-						// publish supervisor list & queue list
+						if (received.SuperVisor.Value && !_supervisors.Any(x => x.Name == received.Name))
+						{
+							Supervisor supervisor = new()
+							{
+								Name = received.Name,
+								Status = Enums.Status.Available
+							};
+							_supervisors.Add(supervisor);
+							var broadcastMessage = "supervisors - " + JsonConvert.SerializeObject(_supervisors.ToArray());
+							_broadcastQueue.Enqueue(broadcastMessage);
+						}
 					}
 					else if (received.EnterQueue.HasValue)
 					{
@@ -98,7 +111,12 @@ namespace TheQueue.Server.Core.Services
 						if (!HandleHeartbeat(received))
 						{
 							_logger.LogWarning($"Received bad heartbeat");
-							_ = responder.TrySignalError();
+							var error = new ErrorMessage()
+							{
+								Error = Enums.ErrorType.Critical,
+								Msg = "Heartbeat could not be tied to a connected client."
+							};
+							responder.SendFrame(JsonConvert.SerializeObject(error));
 							continue;
 						}
 						responder.SendFrame("{}");
@@ -158,8 +176,15 @@ namespace TheQueue.Server.Core.Services
 						Ticket = _queue.Count() + 1
 					};
 					_queue.Add(ticket);
+					var broadcastMessage = "queue - " + JsonConvert.SerializeObject(_queue.ToArray());
+					_broadcastQueue.Enqueue(broadcastMessage);
 				}
-				return _queue.First(x => x.Name == message.Name);
+			}
+			var queueTicket = _queue.FirstOrDefault(x => x.Name == message.Name);
+
+			if (queueTicket != null)
+			{
+				return queueTicket;
 			}
 
 			return new QueueTicket
@@ -183,17 +208,22 @@ namespace TheQueue.Server.Core.Services
 				if (!_connectedClients.Any(x => x.Name == name))
 				{
 					_queue.Remove(_queue.First(x => x.Name == name));
+					var broadcastMessage = "queue - " + JsonConvert.SerializeObject(_queue.ToArray());
+					_broadcastQueue.Enqueue(broadcastMessage);
 				}
 			}
-
-			// if need broadcast - do
-
-
 		}
 
 		private void HandleMessageRequest(ClientMessage message)
 		{
-
+			UserMessages userMessage = new()
+			{
+				Supervisor = message.Name,
+				Message = message.Message.Body
+			};
+			var supervisorMessage = JsonConvert.SerializeObject(userMessage);
+			var broadcastMessage = $"{message.Message.Recipient} - {supervisorMessage}";
+			_broadcastQueue.Enqueue(broadcastMessage);
 		}
 
 		private bool HandleHeartbeat(ClientMessage message)
