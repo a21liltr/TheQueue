@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using NetMQ;
 using NetMQ.Sockets;
 using Newtonsoft.Json;
+using TheQueue.Server.Core.Enums;
 using TheQueue.Server.Core.Models;
 using TheQueue.Server.Core.Models.BroadcastMessages;
 using TheQueue.Server.Core.Models.ClientMessages;
@@ -89,11 +90,12 @@ namespace TheQueue.Server.Core.Services
 							Supervisor supervisor = new()
 							{
 								Name = received.Name,
-								Status = Enums.Status.Available
+								Status = Status.Available
 							};
 							_supervisors.Add(supervisor);
-							var broadcastMessage = "supervisors - " + JsonConvert.SerializeObject(_supervisors.ToArray());
-							_broadcastQueue.Enqueue(broadcastMessage);
+							//var broadcastMessage = "supervisors - " + JsonConvert.SerializeObject(_supervisors.ToArray());
+							//_broadcastQueue.Enqueue(broadcastMessage);
+							SendBroadcast("supervisors", _supervisors.ToArray());
 						}
 					}
 					else if (received.EnterQueue.HasValue)
@@ -139,7 +141,7 @@ namespace TheQueue.Server.Core.Services
 						var message = _broadcastQueue.Dequeue();
 
 						publisher.SendFrame(message);
-						_logger.LogInformation("Published {msg}", message);
+						_logger.LogInformation("Published {pubMsg}", message);
 					}
 
 					Thread.Sleep(1000);
@@ -176,8 +178,9 @@ namespace TheQueue.Server.Core.Services
 						Ticket = _queue.Count() + 1
 					};
 					_queue.Add(ticket);
-					var broadcastMessage = "queue - " + JsonConvert.SerializeObject(_queue.ToArray());
-					_broadcastQueue.Enqueue(broadcastMessage);
+					//var broadcastMessage = "queue - " + JsonConvert.SerializeObject(_queue.ToArray());
+					//_broadcastQueue.Enqueue(broadcastMessage);
+					SendBroadcast("queue", _queue.ToArray());
 				}
 			}
 			var queueTicket = _queue.FirstOrDefault(x => x.Name == message.Name);
@@ -208,8 +211,9 @@ namespace TheQueue.Server.Core.Services
 				if (!_connectedClients.Any(x => x.Name == name))
 				{
 					_queue.Remove(_queue.First(x => x.Name == name));
-					var broadcastMessage = "queue - " + JsonConvert.SerializeObject(_queue.ToArray());
-					_broadcastQueue.Enqueue(broadcastMessage);
+					//var broadcastMessage = "queue - " + JsonConvert.SerializeObject(_queue.ToArray());
+					//_broadcastQueue.Enqueue(broadcastMessage);
+					SendBroadcast("queue", _queue.ToArray());
 				}
 			}
 		}
@@ -221,8 +225,16 @@ namespace TheQueue.Server.Core.Services
 				Supervisor = message.Name,
 				Message = message.Message.Body
 			};
-			var supervisorMessage = JsonConvert.SerializeObject(userMessage);
-			var broadcastMessage = $"{message.Message.Recipient} - {supervisorMessage}";
+			//var supervisorMessage = JsonConvert.SerializeObject(userMessage);
+			//var broadcastMessage = $"{message.Message.Recipient} - {supervisorMessage}";
+			//_broadcastQueue.Enqueue(broadcastMessage);
+			string topic = message.Message.Recipient;
+			SendBroadcast(topic, userMessage);
+		}
+
+		private void SendBroadcast(string topic, object? message)
+		{
+			var broadcastMessage = $"{topic} - " + JsonConvert.SerializeObject(message);
 			_broadcastQueue.Enqueue(broadcastMessage);
 		}
 
@@ -237,11 +249,16 @@ namespace TheQueue.Server.Core.Services
 			return true;
 		}
 
-		// create method createerrormessage
-		// parameter errortype and errormessage
-		// log error
-		// create error message object
-		// return error message
+		private ErrorMessage CreateErrorMessage(string message, ErrorType errorType)
+		{
+			ErrorMessage errorMessage = new()
+			{
+				Error = errorType,
+				Msg = message
+			};
+			_logger.LogError("An error occured: {errorMessage}", message);
+			return errorMessage;
+		}
 
 		private void test()
 		{
