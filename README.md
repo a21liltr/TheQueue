@@ -12,9 +12,15 @@ Application developed by Lili Tran (a21liltr) and Christian Mourad (b22chrmo).
 - C#
 - Python
 ### Dependencies
-- NetMQ (.NET port of ZeroMQ)
-- Newtonsoft.Json
-- Serilog
+#### Install Server dependencies using NuGet package manager
+- NetMQ (.NET port of ZeroMQ) used to communicate with connected clients
+- Newtonsoft.Json used for serializing/deserializing objects and handling messages
+- Serilog for logging purposes
+
+#### Install Client(s) dependencies using pip
+- tkinter
 
 ### Installation
+```bash
 use git clone https://github.com/a21liltr/TheQueue.git
+```
