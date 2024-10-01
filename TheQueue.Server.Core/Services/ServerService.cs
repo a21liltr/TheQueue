@@ -265,16 +265,16 @@ namespace TheQueue.Server.Core.Services
 		{
 			var disconnectedClient = _connectedClients.FirstOrDefault(x => x.ClientId == clientId);
 			if (disconnectedClient is null)
-				_logger.LogWarning("ClientId {wrongId} could not be found", clientId);
-
-			if (disconnectedClient is not null)
 			{
-				_connectedClients.Remove(disconnectedClient);
-				if (!_connectedClients.Any(x => x.Name == name))
-				{
-					_queue.Remove(_queue.First(x => x.Name == name));
-					SendBroadcast("queue", _queue);
-				}
+				_logger.LogWarning("ClientId {wrongId} could not be found", clientId);
+				return;
+			}
+
+			_connectedClients.Remove(disconnectedClient);
+			if (!_connectedClients.Any(x => x.Name == name))
+			{
+				_queue.Remove(_queue.First(x => x.Name == name));
+				SendBroadcast("queue", _queue);
 			}
 		}
 

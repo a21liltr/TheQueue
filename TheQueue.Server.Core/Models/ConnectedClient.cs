@@ -24,7 +24,6 @@ namespace TheQueue.Server.Core.Models
 		public void OnHeartbeat()
 		{
 			_heartbeatTimer.Stop();
-			_heartbeatTimer.Interval = _heartbeatInterval;
 			_heartbeatTimer.Start();
 		}
 	}
