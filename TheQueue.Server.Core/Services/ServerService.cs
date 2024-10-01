@@ -60,8 +60,8 @@ namespace TheQueue.Server.Core.Services
 		public void ShutdownServer()
 		{
 			_serverIsRunning = false;
-			File.WriteAllText("queue.json", string.Empty);
-			File.WriteAllText("supervisors.json", string.Empty);
+			File.WriteAllText(Path.Combine(Environment.CurrentDirectory, "queue.json"), string.Empty);
+			File.WriteAllText(Path.Combine(Environment.CurrentDirectory, "supervisors.json"), string.Empty);
 		}
 
 		private void RunRequestReplyServer(string address)
