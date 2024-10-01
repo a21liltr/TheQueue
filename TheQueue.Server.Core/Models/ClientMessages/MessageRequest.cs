@@ -3,12 +3,12 @@
     public class MessageRequest : RequestBase
     {
         public string Name { get; set; }
-        public Recipient Message { get; set; }
+        public Message Message { get; set; }
     }
 
-    public class Recipient
+    public class Message
     {
-        public string Name { get; set; }
+        public string Recipient { get; set; }
         public string Body { get; set; }
 
     }

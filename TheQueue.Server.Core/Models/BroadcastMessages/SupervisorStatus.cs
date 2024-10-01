@@ -4,8 +4,6 @@ namespace TheQueue.Server.Core.Models.BroadcastMessages
 {
 	public class SupervisorStatus
 	{
-        public string Name { get; set; }
-        public Status Status { get; set; }
-        public QueueStatus? Client { get; set; }
+        public Supervisor[] Supervisors { get; set; }
     }
 }
