@@ -33,16 +33,16 @@ namespace TheQueue.Server.Core.Services
 			_broadcastQueue = new();
 			_connectedClients = new();
 
-            string queuejson = "queue.json";
-            string path = Path.Combine(Environment.CurrentDirectory, queuejson);
-            var queueJson = File.ReadAllText(path);
+            string queueJson = "queue.json";
+            string qeueuPath = Path.Combine(Environment.CurrentDirectory, queueJson);
+            var queueJson = File.ReadAllText(qeueuPath);
 			if (!string.IsNullOrWhiteSpace(queueJson))
 				_queue = JsonConvert.DeserializeObject<List<QueueTicket>>(queueJson);
 			else
 				_queue = new();
 
-			string supervisorjson = "supervisors.json";
-            string supervisorPath = Path.Combine(Environment.CurrentDirectory, supervisorjson);
+			string supervisorJson = "supervisors.json";
+            string supervisorPath = Path.Combine(Environment.CurrentDirectory, supervisorJson);
             var supervisorsJson = File.ReadAllText(supervisorPath);
 			if (!string.IsNullOrWhiteSpace(supervisorsJson))
 				_supervisors = JsonConvert.DeserializeObject<List<Supervisor>>(supervisorsJson);
