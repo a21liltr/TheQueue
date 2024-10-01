@@ -47,11 +47,10 @@ class StudentClient:
         self.window.mainloop()
 
     def submit(self):
-        self.name = self.name_entry.get()
-        messagestring = "{\"clientId\": \"123qwe\", \"enterQueue\": true, \"name\": " + "\"" + self.name + "\"}"
+        name = self.name_entry.get()
+        messagestring = "{\"clientId\": \"123qwe\", \"enterQueue\": true, \"name\": " + "\"" + name + "\"}"
         reqSocket.send_string(messagestring)
         reqSocket.recv()
-        print("Name is: ", self.name)
         self.name_entry.delete(0, tk.END)
 
     def hbthread(self):
