@@ -44,4 +44,7 @@ dotnet restore
 # Compile the project
 dotnet build
 
+# Run the project
+run TheQueue.Server.exe
+
 ```
