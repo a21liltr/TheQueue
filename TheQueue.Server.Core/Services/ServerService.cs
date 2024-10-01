@@ -271,6 +271,7 @@ namespace TheQueue.Server.Core.Services
 			}
 
 			_connectedClients.Remove(disconnectedClient);
+			disconnectedClient.Dispose();
 			if (!_connectedClients.Any(x => x.Name == name))
 			{
 				_queue.Remove(_queue.First(x => x.Name == name));
