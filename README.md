@@ -22,5 +22,26 @@ Application developed by Lili Tran (a21liltr) and Christian Mourad (b22chrmo).
 
 ### Installation
 ```bash
-use git clone https://github.com/a21liltr/TheQueue.git
+
+# Open a terminal (Command Prompt or PowerShell for Windows, Terminal for macOS or Linux)
+
+# Ensure Git is installed
+# Visit https://git-scm.com to download and install console Git if not already installed
+
+# Clone the repository
+git clone https://github.com/a21liltr/TheQueue.git
+
+# Navigate to the project directory
+cd TheQueue
+
+# Check if .NET SDK is installed
+dotnet --version  # Check the installed version of .NET SDK
+# Visit the official Microsoft website to install or update it if necessary
+
+# Restore dependencies
+dotnet restore
+
+# Compile the project
+dotnet build
+
 ```
