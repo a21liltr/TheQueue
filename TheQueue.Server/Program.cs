@@ -1,6 +1,8 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using Serilog;
 using TheQueue.Server.Core;
 using TheQueue.Server.Core.Services;
@@ -28,6 +30,10 @@ public class Program
                     loggerConfiguration.ReadFrom.Configuration(hostingContext.Configuration))
                 .Build();
             var server = host.Services.GetRequiredService<ServerService>();
+            JsonConvert.DefaultSettings = () => new JsonSerializerSettings
+            {
+                ContractResolver = new CamelCasePropertyNamesContractResolver()
+            };
             server.RunServer();
         }
         catch (Exception ex)
