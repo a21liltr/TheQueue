@@ -33,13 +33,17 @@ namespace TheQueue.Server.Core.Services
 			_broadcastQueue = new();
 			_connectedClients = new();
 
-			var queueJson = File.ReadAllText("\\\\queue.json");
+            string queuejson = "queue.json";
+            string path = Path.Combine(Environment.CurrentDirectory, queuejson);
+            var queueJson = File.ReadAllText(path);
 			if (!string.IsNullOrWhiteSpace(queueJson))
 				_queue = JsonConvert.DeserializeObject<List<QueueTicket>>(queueJson);
 			else
 				_queue = new();
 
-			var supervisorsJson = File.ReadAllText("\\\\supervisors.json");
+			string supervisorjson = "supervisors.json";
+            string supervisorPath = Path.Combine(Environment.CurrentDirectory, supervisorjson);
+            var supervisorsJson = File.ReadAllText(supervisorPath);
 			if (!string.IsNullOrWhiteSpace(supervisorsJson))
 				_supervisors = JsonConvert.DeserializeObject<List<Supervisor>>(supervisorsJson);
 			else
@@ -56,8 +60,8 @@ namespace TheQueue.Server.Core.Services
 		public void ShutdownServer()
 		{
 			_serverIsRunning = false;
-			File.WriteAllText("\\\\queue.json", string.Empty);
-			File.WriteAllText("\\\\supeprvisors.json", string.Empty);
+			File.WriteAllText("queue.json", string.Empty);
+			File.WriteAllText("supervisors.json", string.Empty);
 		}
 
 		private void RunRequestReplyServer(string address)
