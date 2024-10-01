@@ -19,7 +19,7 @@ namespace TheQueue.Server.Core.Services
 		private bool _serverIsRunning = true;
 
 		private int _port;
-		private Queue<string> _broadcastQueue;
+		private Queue<TopicMessage> _broadcastQueue;
 		private List<ConnectedClient> _connectedClients;
 		private List<QueueTicket> _queue;
 		private List<Supervisor> _supervisors;
@@ -33,16 +33,14 @@ namespace TheQueue.Server.Core.Services
 			_broadcastQueue = new();
 			_connectedClients = new();
 
-            string queueJson = "queue.json";
-            string queuePath = Path.Combine(Environment.CurrentDirectory, queueJson);
+            string queuePath = Path.Combine(Environment.CurrentDirectory, "queue.json");
             var readQueueJson = File.ReadAllText(queuePath);
 			if (!string.IsNullOrWhiteSpace(readQueueJson))
 				_queue = JsonConvert.DeserializeObject<List<QueueTicket>>(readQueueJson);
 			else
 				_queue = new();
 
-			string supervisorJson = "supervisors.json";
-            string supervisorPath = Path.Combine(Environment.CurrentDirectory, supervisorJson);
+            string supervisorPath = Path.Combine(Environment.CurrentDirectory, "supervisors.json");
             var readSupervisorsJson = File.ReadAllText(supervisorPath);
 			if (!string.IsNullOrWhiteSpace(readSupervisorsJson))
 				_supervisors = JsonConvert.DeserializeObject<List<Supervisor>>(readSupervisorsJson);
@@ -52,8 +50,8 @@ namespace TheQueue.Server.Core.Services
 
 		public void RunServer()
 		{
-			Task rrServer = Task.Run(() => { RunRequestReplyServer($"tcp://localhost:{_port}"); });
-			Task psServer = Task.Run(() => { RunPubSubServer($"tcp://localhost:{_port + 1}"); });
+			Task rrServer = Task.Run(() => { RunRequestReplyServer($"tcp://localhost:{_port+1}"); });
+			Task psServer = Task.Run(() => { RunPubSubServer($"tcp://localhost:{_port}"); });
 			Task.WaitAll(rrServer, psServer);
 		}
 
@@ -74,7 +72,6 @@ namespace TheQueue.Server.Core.Services
 				{
 					try
 					{
-
 						string message = responder.ReceiveFrameString();
 						_logger.LogInformation("Received message, {message}", message);
 						if (string.IsNullOrEmpty(message))
@@ -138,8 +135,8 @@ namespace TheQueue.Server.Core.Services
 							}
 							responder.SendFrame("{}");
 						}
-						SendBroadcast("queue", _queue.ToArray());
-						SendBroadcast("supervisors", _supervisors.ToArray());
+						SendBroadcast("queue", _queue);
+						SendBroadcast("supervisors", _supervisors);
 					}
 					catch (Exception ex)
 					{
@@ -153,7 +150,7 @@ namespace TheQueue.Server.Core.Services
 		{
 			using (PublisherSocket publisher = new())
 			{
-				publisher.Bind(address); //port?
+				publisher.Bind(address);
 				while (_serverIsRunning)
 				{
 					try
@@ -164,7 +161,8 @@ namespace TheQueue.Server.Core.Services
 						{
 							var message = _broadcastQueue.Dequeue();
 
-							publisher.SendFrame(message);
+							publisher.SendMoreFrame(message.Topic);
+							publisher.SendFrame(message.Message);
 							_logger.LogInformation("Published {pubMsg}", message);
 						}
 					}
@@ -209,8 +207,6 @@ namespace TheQueue.Server.Core.Services
 					Status = Status.Available
 				};
 				_supervisors.Add(supervisor);
-				//var broadcastMessage = "supervisors - " + JsonConvert.SerializeObject(_supervisors.ToArray());
-				//_broadcastQueue.Enqueue(broadcastMessage);
 			}
 
 			if (message.Status.HasValue)
@@ -251,8 +247,6 @@ namespace TheQueue.Server.Core.Services
 						Ticket = _queue.Count() + 1
 					};
 					_queue.Add(ticket);
-					//var broadcastMessage = "queue - " + JsonConvert.SerializeObject(_queue.ToArray());
-					//_broadcastQueue.Enqueue(broadcastMessage);
 				}
 			}
 			var queueTicket = _queue.FirstOrDefault(x => x.Name == message.Name);
@@ -279,9 +273,7 @@ namespace TheQueue.Server.Core.Services
 				if (!_connectedClients.Any(x => x.Name == name))
 				{
 					_queue.Remove(_queue.First(x => x.Name == name));
-					//var broadcastMessage = "queue - " + JsonConvert.SerializeObject(_queue.ToArray());
-					//_broadcastQueue.Enqueue(broadcastMessage);
-					SendBroadcast("queue", _queue.ToArray());
+					SendBroadcast("queue", _queue);
 				}
 			}
 		}
@@ -299,9 +291,6 @@ namespace TheQueue.Server.Core.Services
 				Supervisor = message.Name!,
 				Message = message.Message.Body
 			};
-			//var supervisorMessage = JsonConvert.SerializeObject(userMessage);
-			//var broadcastMessage = $"{message.Message.Recipient} - {supervisorMessage}";
-			//_broadcastQueue.Enqueue(broadcastMessage);
 			string topic = message.Message.Recipient;
 			SendBroadcast(topic, userMessage);
 		}
@@ -311,9 +300,14 @@ namespace TheQueue.Server.Core.Services
 			var serialized = JsonConvert.SerializeObject(message, Formatting.Indented);
 			if (topic is "queue" || topic is "supervisors")
 			{
-				File.WriteAllText($"\\\\{topic}.json", serialized);
+				File.WriteAllText(Path.Combine(Environment.CurrentDirectory, $"{topic}.json"), serialized);
 			}
-			var broadcastMessage = $"{topic} - " + serialized;
+
+			TopicMessage broadcastMessage = new()
+			{
+				Topic = topic,
+				Message = serialized
+			};
 			_broadcastQueue.Enqueue(broadcastMessage);
 		}
 
