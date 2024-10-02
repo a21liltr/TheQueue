@@ -33,15 +33,15 @@ namespace TheQueue.Server.Core.Services
 			_broadcastQueue = new();
 			_connectedClients = new();
 
-            string queuePath = Path.Combine(Environment.CurrentDirectory, "queue.json");
-            var readQueueJson = File.ReadAllText(queuePath);
+			string queuePath = Path.Combine(Environment.CurrentDirectory, "queue.json");
+			var readQueueJson = File.ReadAllText(queuePath);
 			if (!string.IsNullOrWhiteSpace(readQueueJson))
 				_queue = JsonConvert.DeserializeObject<List<QueueTicket>>(readQueueJson);
 			else
 				_queue = new();
 
-            string supervisorPath = Path.Combine(Environment.CurrentDirectory, "supervisors.json");
-            var readSupervisorsJson = File.ReadAllText(supervisorPath);
+			string supervisorPath = Path.Combine(Environment.CurrentDirectory, "supervisors.json");
+			var readSupervisorsJson = File.ReadAllText(supervisorPath);
 			if (!string.IsNullOrWhiteSpace(readSupervisorsJson))
 				_supervisors = JsonConvert.DeserializeObject<List<Supervisor>>(readSupervisorsJson);
 			else
@@ -50,7 +50,7 @@ namespace TheQueue.Server.Core.Services
 
 		public void RunServer()
 		{
-			Task rrServer = Task.Run(() => { RunRequestReplyServer($"tcp://localhost:{_port+1}"); });
+			Task rrServer = Task.Run(() => { RunRequestReplyServer($"tcp://localhost:{_port + 1}"); });
 			Task psServer = Task.Run(() => { RunPubSubServer($"tcp://localhost:{_port}"); });
 			Task.WaitAll(rrServer, psServer);
 		}
@@ -127,13 +127,14 @@ namespace TheQueue.Server.Core.Services
 								_logger.LogWarning($"Received bad heartbeat");
 								var error = new ErrorMessage()
 								{
-									Error = Enums.ErrorType.Critical,
+									Error = ErrorType.Critical,
 									Msg = "Heartbeat could not be tied to a connected client."
 								};
 								responder.SendFrame(JsonConvert.SerializeObject(error));
 								continue;
 							}
 							responder.SendFrame("{}");
+							continue;
 						}
 						SendBroadcast("queue", _queue);
 						SendBroadcast("supervisors", _supervisors);
