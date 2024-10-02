@@ -103,7 +103,11 @@ namespace TheQueue.Server.Core.Services
 						{
 							var supervisorConnect = HandleSupervisorConnect(received);
 							if (!string.IsNullOrEmpty(supervisorConnect))
-								responder.SendFrame(supervisorConnect);
+							{
+								responder.SendFrame(CreateErrorMessage("Incorrect message", ErrorType.Critical));
+								continue;
+							}
+							responder.SendFrame("{}");
 						}
 						else if (received.EnterQueue.HasValue)
 						{
@@ -117,6 +121,7 @@ namespace TheQueue.Server.Core.Services
 							{
 								_logger.LogError("Received message without contents to forward {message}", message);
 								responder.SendFrame(CreateErrorMessage("Received message without contents to forward", ErrorType.Critical));
+								continue;
 							}
 							HandleMessageRequest(received);
 						}
@@ -131,9 +136,11 @@ namespace TheQueue.Server.Core.Services
 									Msg = "Heartbeat could not be tied to a connected client."
 								};
 								responder.SendFrame(JsonConvert.SerializeObject(error));
-								continue;
 							}
-							responder.SendFrame("{}");
+							else
+							{
+								responder.SendFrame("{}");
+							}
 							continue;
 						}
 						SendBroadcast("queue", _queue);
@@ -156,8 +163,6 @@ namespace TheQueue.Server.Core.Services
 				{
 					try
 					{
-						// peek at queue
-						// if any -> dequeue and broadcast
 						if (_broadcastQueue.Count is not 0)
 						{
 							var message = _broadcastQueue.Dequeue();
@@ -181,9 +186,9 @@ namespace TheQueue.Server.Core.Services
 
 		private void HandleConnect(ClientMessage message)
 		{
-			_logger.LogInformation("Handling Connection for ClientId {client}", message.ClientId);
 			if (!_connectedClients.Any(x => x.ClientId == message.ClientId))
 			{
+				_logger.LogInformation("Handling Connection for ClientId {client}", message.ClientId);
 				ConnectedClient client = new()
 				{
 					ClientId = message.ClientId,
@@ -262,8 +267,14 @@ namespace TheQueue.Server.Core.Services
 			};
 		}
 
+		private void HandleDequeue()
+		{
+
+		}
+
 		private void OnDisconnect(string clientId, string name)
 		{
+			_logger.LogInformation("Client {clientId} : {clientName} Disconnect from expired heartbeat", clientId, name);
 			var disconnectedClient = _connectedClients.FirstOrDefault(x => x.ClientId == clientId);
 			if (disconnectedClient is null)
 			{
@@ -273,7 +284,7 @@ namespace TheQueue.Server.Core.Services
 
 			_connectedClients.Remove(disconnectedClient);
 			disconnectedClient.Dispose();
-			if (!_connectedClients.Any(x => x.Name == name))
+			if (!_connectedClients.Any(x => x.Name == name) && _queue.Any(x => x.Name == name))
 			{
 				_queue.Remove(_queue.First(x => x.Name == name));
 				SendBroadcast("queue", _queue);
