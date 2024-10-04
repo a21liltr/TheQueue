@@ -37,6 +37,7 @@ namespace TheQueue.Server.Core.Services
             _config = config;
             _port = _config.GetValue<int>("Port");
             _broadcastQueue = new();
+
             _connectedClients = new();
 
             string queuePath = Path.Combine(Environment.CurrentDirectory, "queue.json");
@@ -143,7 +144,7 @@ namespace TheQueue.Server.Core.Services
                             if (!HandleHeartbeat(received))
                             {
                                 responder.SendFrame(
-                                    CreateErrorMessage("Heartbeat could not be tied to a connected client", ErrorType.Critical));
+                                CreateErrorMessage("Heartbeat could not be tied to a connected client", ErrorType.Critical));
                             }
                             else
                             {
@@ -229,7 +230,7 @@ namespace TheQueue.Server.Core.Services
             Supervisor supervisor = _supervisors.FirstOrDefault(x => x.Name == supervisorName)
                 ?? throw new Exception(CreateErrorMessage($"No Supervisor with name {supervisorName}", ErrorType.Warning));
 
-            if (status is Status.Available)
+            if (status is not Status.Occupied)
             {
                 supervisor.Client = null;
             }
