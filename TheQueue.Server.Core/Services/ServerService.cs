@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using NetMQ;
 using NetMQ.Sockets;
 using Newtonsoft.Json;
+using System.ServiceModel.Channels;
 using TheQueue.Server.Core.Enums;
 using TheQueue.Server.Core.Models;
 using TheQueue.Server.Core.Models.BroadcastMessages;
@@ -11,339 +12,350 @@ using TheQueue.Server.Core.Models.ServerMessages;
 
 namespace TheQueue.Server.Core.Services
 {
-	public class ServerService
-	{
-		private readonly ILogger<ServerService> _logger;
-		private readonly IConfiguration _config;
+    public class ServerService
+    {
+        private readonly ILogger<ServerService> _logger;
+        private readonly IConfiguration _config;
 
-		private bool _serverIsRunning = true;
+        private bool _serverIsRunning = true;
 
-		private int _port;
-		private Queue<TopicMessage> _broadcastQueue;
-		private List<ConnectedClient> _connectedClients;
-		private List<QueueTicket> _queue;
-		private List<Supervisor> _supervisors;
+        private int _port;
+        private int _ticketCounter = 0;
+        private Queue<TopicMessage> _broadcastQueue;
+        private List<ConnectedClient> _connectedClients;
+        private List<QueueTicket> _queue;
+        private List<Supervisor> _supervisors;
 
-		public ServerService(ILogger<ServerService> logger,
-			IConfiguration config)
-		{
-			_logger = logger;
-			_config = config;
-			_port = _config.GetValue<int>("Port");
-			_broadcastQueue = new();
-			_connectedClients = new();
+        public ServerService(ILogger<ServerService> logger,
+            IConfiguration config)
+        {
+            _logger = logger;
+            _config = config;
+            _port = _config.GetValue<int>("Port");
+            _broadcastQueue = new();
+            _connectedClients = new();
 
-			string queuePath = Path.Combine(Environment.CurrentDirectory, "queue.json");
-			var readQueueJson = File.ReadAllText(queuePath);
-			if (!string.IsNullOrWhiteSpace(readQueueJson))
-				_queue = JsonConvert.DeserializeObject<List<QueueTicket>>(readQueueJson);
-			else
-				_queue = new();
+            string queuePath = Path.Combine(Environment.CurrentDirectory, "queue.json");
+            var readQueueJson = File.ReadAllText(queuePath);
+            if (!string.IsNullOrWhiteSpace(readQueueJson))
+                _queue = JsonConvert.DeserializeObject<List<QueueTicket>>(readQueueJson);
+            else
+                _queue = new();
 
-			string supervisorPath = Path.Combine(Environment.CurrentDirectory, "supervisors.json");
-			var readSupervisorsJson = File.ReadAllText(supervisorPath);
-			if (!string.IsNullOrWhiteSpace(readSupervisorsJson))
-				_supervisors = JsonConvert.DeserializeObject<List<Supervisor>>(readSupervisorsJson);
-			else
-				_supervisors = new();
-		}
+            string supervisorPath = Path.Combine(Environment.CurrentDirectory, "supervisors.json");
+            var readSupervisorsJson = File.ReadAllText(supervisorPath);
+            if (!string.IsNullOrWhiteSpace(readSupervisorsJson))
+                _supervisors = JsonConvert.DeserializeObject<List<Supervisor>>(readSupervisorsJson);
+            else
+                _supervisors = new();
+        }
 
-		public void RunServer()
-		{
-			Task rrServer = Task.Run(() => { RunRequestReplyServer($"tcp://localhost:{_port + 1}"); });
-			Task psServer = Task.Run(() => { RunPubSubServer($"tcp://localhost:{_port}"); });
-			Task.WaitAll(rrServer, psServer);
-		}
+        public void RunServer()
+        {
+            Task rrServer = Task.Run(() => { RunRequestReplyServer($"tcp://localhost:{_port + 1}"); });
+            Task psServer = Task.Run(() => { RunPubSubServer($"tcp://localhost:{_port}"); });
+            Task.WaitAll(rrServer, psServer);
+        }
 
-		public void ShutdownServer()
-		{
-			_serverIsRunning = false;
-			File.WriteAllText(Path.Combine(Environment.CurrentDirectory, "queue.json"), string.Empty);
-			File.WriteAllText(Path.Combine(Environment.CurrentDirectory, "supervisors.json"), string.Empty);
-		}
+        public void ShutdownServer()
+        {
+            _serverIsRunning = false;
+            File.WriteAllText(Path.Combine(Environment.CurrentDirectory, "queue.json"), "[]");
+            File.WriteAllText(Path.Combine(Environment.CurrentDirectory, "supervisors.json"), "[]");
+        }
 
-		private void RunRequestReplyServer(string address)
-		{
-			using (ResponseSocket responder = new())
-			{
-				responder.Bind(address);
-				_logger.LogInformation("Server running");
-				while (_serverIsRunning)
-				{
-					try
-					{
-						string message = responder.ReceiveFrameString();
-						_logger.LogInformation("Received message, {message}", message);
-						if (string.IsNullOrEmpty(message))
-						{
-							_logger.LogWarning("Received bad message");
-							responder.SendFrame(CreateErrorMessage("Received bad message", ErrorType.Warning));
-							continue;
-						}
+        private void RunRequestReplyServer(string address)
+        {
+            using (ResponseSocket responder = new())
+            {
+                responder.Bind(address);
+                _logger.LogInformation("Server running");
+                while (_serverIsRunning)
+                {
+                    try
+                    {
+                        string message = responder.ReceiveFrameString();
+                        _logger.LogInformation("Received message, {message}", message);
+                        if (string.IsNullOrEmpty(message))
+                        {
+                            responder.SendFrame(CreateErrorMessage("Received bad message", ErrorType.Warning));
+                            continue;
+                        }
 
-						var received = JsonConvert.DeserializeObject<ClientMessage>(message);
-						if (received is null)
-						{
-							_logger.LogWarning("Received bad message");
-							responder.SendFrame(CreateErrorMessage("Received bad message", ErrorType.Warning));
-							continue;
-						}
-						_logger.LogDebug("Deserialized message to ClientMessage object");
+                        var received = JsonConvert.DeserializeObject<ClientMessage>(message);
+                        if (received is null)
+                        {
+                            responder.SendFrame(CreateErrorMessage("Received bad message", ErrorType.Warning));
+                            continue;
+                        }
+                        _logger.LogDebug("Deserialized message to ClientMessage object");
 
-						// validation on properties
-						if (string.IsNullOrEmpty(received.ClientId))
-						{
-							_logger.LogError("Missing ClientId, {message}", message);
-							responder.SendFrame(CreateErrorMessage("Missing ClientId", ErrorType.Critical));
-						}
+                        // validation on properties
+                        if (string.IsNullOrWhiteSpace(received.ClientId) || string.IsNullOrWhiteSpace(received.Name))
+                        {
+                            responder.SendFrame(CreateErrorMessage("Missing information", ErrorType.Critical));
+                        }
 
-						HandleConnect(received);
+                        HandleConnect(received);
 
-						if (received.SuperVisor.HasValue && received.SuperVisor.Value)
-						{
-							var supervisorConnect = HandleSupervisorConnect(received);
-							if (!string.IsNullOrEmpty(supervisorConnect))
-							{
-								responder.SendFrame(CreateErrorMessage("Incorrect message", ErrorType.Critical));
-								continue;
-							}
-							responder.SendFrame("{}");
-						}
-						else if (received.EnterQueue.HasValue)
-						{
-							var response = HandleEnterQueueMessage(received);
-							var responseMessage = JsonConvert.SerializeObject(response);
-							responder.SendFrame(responseMessage);
-						}
-						else if (received.Message is not null)
-						{
-							if (string.IsNullOrWhiteSpace(received.Name))
-							{
-								_logger.LogError("Received message without contents to forward {message}", message);
-								responder.SendFrame(CreateErrorMessage("Received message without contents to forward", ErrorType.Critical));
-								continue;
-							}
-							HandleMessageRequest(received);
-						}
-						else
-						{
-							if (!HandleHeartbeat(received))
-							{
-								_logger.LogWarning($"Received bad heartbeat");
-								var error = new ErrorMessage()
-								{
-									Error = ErrorType.Critical,
-									Msg = "Heartbeat could not be tied to a connected client."
-								};
-								responder.SendFrame(JsonConvert.SerializeObject(error));
-							}
-							else
-							{
-								responder.SendFrame("{}");
-							}
-							continue;
-						}
-						SendBroadcast("queue", _queue);
-						SendBroadcast("supervisors", _supervisors);
-					}
-					catch (Exception ex)
-					{
-						_logger.LogError(ex, "An error occured: {errorMessage}", ex.Message);
-					}
-				}
-			}
-		}
+                        if (received.SuperVisor.HasValue && received.SuperVisor.Value)
+                        {
+                            try
+                            {
+                                CreateSupervisorIfNotExists(received);
+                                if (received.EnterQueue.HasValue && received.EnterQueue.Value)
+                                {
+                                    responder.SendFrame(HandleSupervisorEnterQueue(received));
+                                }
+                                else
+                                {
+                                    SetSupervisorStatus(received.Name, Status.Pending);
+                                    responder.SendFrame("{}");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                responder.SendFrame(ex.Message); // returns error
+                                continue;
+                            }
+                        }
+                        else if (received.EnterQueue.HasValue)
+                        {
+                            var response = CreateStudentAndAddToQueueIfNotExists(received);
+                            var responseMessage = JsonConvert.SerializeObject(response);
+                            responder.SendFrame(responseMessage);
+                        }
+                        else if (received.Message is not null)
+                        {
+                            if (string.IsNullOrWhiteSpace(received.Name))
+                            {
+                                responder.SendFrame(CreateErrorMessage("Received bad message", ErrorType.Critical));
+                                continue;
+                            }
+                            responder.SendFrame(HandleMessageRequest(received));
+                        }
+                        else
+                        {
+                            if (!HandleHeartbeat(received))
+                            {
+                                responder.SendFrame(
+                                    CreateErrorMessage("Heartbeat could not be tied to a connected client", ErrorType.Critical));
+                            }
+                            else
+                            {
+                                responder.SendFrame("{}");
+                            }
+                            continue;
+                        }
+                        SendBroadcast("queue", _queue);
+                        SendBroadcast("supervisors", _supervisors);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "An error occured: {errorMessage}", ex.Message);
+                    }
+                }
+            }
+        }
 
-		private void RunPubSubServer(string address)
-		{
-			using (PublisherSocket publisher = new())
-			{
-				publisher.Bind(address);
-				while (_serverIsRunning)
-				{
-					try
-					{
-						if (_broadcastQueue.Count is not 0)
-						{
-							var message = _broadcastQueue.Dequeue();
+        private void RunPubSubServer(string address)
+        {
+            using (PublisherSocket publisher = new())
+            {
+                publisher.Bind(address);
+                while (_serverIsRunning)
+                {
+                    try
+                    {
+                        if (_broadcastQueue.Count is not 0)
+                        {
+                            var message = _broadcastQueue.Dequeue();
 
-							publisher.SendMoreFrame(message.Topic);
-							publisher.SendFrame(message.Message);
-							_logger.LogInformation("Published {pubMsg}", message);
-						}
-					}
-					catch (Exception ex)
-					{
-						_logger.LogError(ex, "An error occured: {errorMessage}", ex.Message);
-					}
-					finally
-					{
-						Thread.Sleep(1000);
-					}
-				}
-			}
-		}
+                            publisher.SendMoreFrame(message.Topic);
+                            publisher.SendFrame(message.Message);
+                            _logger.LogInformation("Published {topic} : {message}", message.Topic, message.Message);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "An error occured: {errorMessage}", ex.Message);
+                    }
+                    finally
+                    {
+                        Thread.Sleep(1000);
+                    }
+                }
+            }
+        }
 
-		private void HandleConnect(ClientMessage message)
-		{
-			if (!_connectedClients.Any(x => x.ClientId == message.ClientId))
-			{
-				_logger.LogInformation("Handling Connection for ClientId {client}", message.ClientId);
-				ConnectedClient client = new()
-				{
-					ClientId = message.ClientId,
-					Name = message.Name ?? $"Client_{_queue.Count + 1}"
-				};
-				client.OnDisconnect += OnDisconnect;
-				_connectedClients.Add(client);
-				_logger.LogInformation("Connected ClientId {client}", message.ClientId);
-			}
-		}
+        private void HandleConnect(ClientMessage message)
+        {
+            if (!_connectedClients.Any(x => x.ClientId == message.ClientId))
+            {
+                _logger.LogInformation("Handling Connection for ClientId {client}", message.ClientId);
+                ConnectedClient client = new()
+                {
+                    ClientId = message.ClientId,
+                    Name = message.Name
+                };
+                client.OnDisconnect += OnDisconnect;
+                _connectedClients.Add(client);
+                _logger.LogInformation("Connected ClientId {client}", message.ClientId);
+            }
+        }
 
-		private string HandleSupervisorConnect(ClientMessage message)
-		{
-			if (string.IsNullOrWhiteSpace(message.Name))
-				return CreateErrorMessage("Supervisor Name not found", ErrorType.Warning);
+        private void CreateSupervisorIfNotExists(ClientMessage message)
+        {
+            if (string.IsNullOrWhiteSpace(message.Name))
+                throw new Exception(CreateErrorMessage("Supervisor Name not found", ErrorType.Warning));
 
-			if (!_supervisors.Any(x => x.Name == message.Name))
-			{
-				Supervisor supervisor = new()
-				{
-					Name = message.Name,
-					Status = Status.Available
-				};
-				_supervisors.Add(supervisor);
-			}
+            if (!_supervisors.Any(x => x.Name == message.Name))
+            {
+                Supervisor supervisor = new()
+                {
+                    Name = message.Name,
+                    Status = Status.Pending
+                };
+                _supervisors.Add(supervisor);
+            }
+        }
 
-			if (message.Status.HasValue)
-			{
-				var supervisor = _supervisors.FirstOrDefault(x => x.Name == message.Name);
-				if (supervisor is null)
-				{
-					return CreateErrorMessage("Supervisor not found", ErrorType.Warning);
-				}
+        public void SetSupervisorStatus(string supervisorName, Status status)
+        {
+            Supervisor supervisor = _supervisors.FirstOrDefault(x => x.Name == supervisorName)
+                ?? throw new Exception(CreateErrorMessage($"No Supervisor with name {supervisorName}", ErrorType.Warning));
 
-				switch (message.Status.Value)
-				{
-					case Status.Available:
-					case Status.Pending:
-						supervisor.Status = message.Status.Value;
-						supervisor.Client = null;
-						break;
-					case Status.Occupied:
-						supervisor.Status = Status.Occupied;
-						supervisor.Client = message.QueueTicket;
-						break;
-					default:
-						return CreateErrorMessage("Incorrect status", ErrorType.Warning);
-				}
-			}
-			return string.Empty;
-		}
+            supervisor.Status = status;
+        }
 
-		private QueueTicket HandleEnterQueueMessage(ClientMessage message)
-		{
-			if (message.EnterQueue!.Value && !string.IsNullOrWhiteSpace(message.Name))
-			{
-				if (!_queue.Any(x => x.Name == message.Name))
-				{
-					QueueTicket ticket = new()
-					{
-						Name = message.Name,
-						Ticket = _queue.Count() + 1
-					};
-					_queue.Add(ticket);
-				}
-			}
-			var queueTicket = _queue.FirstOrDefault(x => x.Name == message.Name);
+        private string HandleSupervisorEnterQueue(ClientMessage message)
+        {
+            SetSupervisorStatus(message.Name, Status.Available);
 
-			if (queueTicket != null)
-				return queueTicket;
+            _logger.LogInformation("Getting student for Supervisor {supervisor}", message.Name);
 
-			return new QueueTicket
-			{
-				Name = message.Name ?? message.ClientId,
-				Ticket = -1
-			};
-		}
+            QueueTicket? queueTicket = _queue.FirstOrDefault();
+            if (queueTicket is null)
+            {
+                _logger.LogInformation("No students available for supervision");
+                return "{}";
+            }
+            return JsonConvert.SerializeObject(queueTicket);
+        }
 
-		private void HandleDequeue()
-		{
+        private QueueTicket CreateStudentAndAddToQueueIfNotExists(ClientMessage message)
+        {
+            if (message.EnterQueue!.Value && !string.IsNullOrWhiteSpace(message.Name))
+            {
+                if (!_queue.Any(x => x.Name == message.Name))
+                {
+                    QueueTicket ticket = new()
+                    {
+                        Name = message.Name,
+                        Ticket = _ticketCounter++
+                    };
+                    _queue.Add(ticket);
+                }
+            }
+            var queueTicket = _queue.FirstOrDefault(x => x.Name == message.Name);
 
-		}
+            if (queueTicket != null)
+                return queueTicket;
 
-		private void OnDisconnect(string clientId, string name)
-		{
-			_logger.LogInformation("Client {clientId} : {clientName} Disconnect from expired heartbeat", clientId, name);
-			var disconnectedClient = _connectedClients.FirstOrDefault(x => x.ClientId == clientId);
-			if (disconnectedClient is null)
-			{
-				_logger.LogWarning("ClientId {wrongId} could not be found", clientId);
-				return;
-			}
+            return new QueueTicket
+            {
+                Name = message.Name ?? message.ClientId,
+                Ticket = -1
+            };
+        }
 
-			_connectedClients.Remove(disconnectedClient);
-			disconnectedClient.Dispose();
-			if (!_connectedClients.Any(x => x.Name == name) && _queue.Any(x => x.Name == name))
-			{
-				_queue.Remove(_queue.First(x => x.Name == name));
-				SendBroadcast("queue", _queue);
-			}
-		}
+        private void OnDisconnect(string clientId, string name)
+        {
+            _logger.LogInformation("Client {clientId} : {clientName} Disconnect from expired heartbeat", clientId, name);
+            var disconnectedClient = _connectedClients.FirstOrDefault(x => x.ClientId == clientId);
+            if (disconnectedClient is null)
+            {
+                _logger.LogWarning("ClientId {wrongId} could not be found", clientId);
+                return;
+            }
 
-		private void HandleMessageRequest(ClientMessage message)
-		{
-			if (string.IsNullOrWhiteSpace(message.Message.Body))
-			{
-				_logger.LogError("Received message with not body content to forward {message}", message);
-				return;
-			}
+            _connectedClients.Remove(disconnectedClient);
+            disconnectedClient.Dispose();
+            if (!_connectedClients.Any(x => x.Name == name) && _queue.Any(x => x.Name == name))
+            {
+                _queue.Remove(_queue.First(x => x.Name == name));
+                SendBroadcast("queue", _queue);
+            }
+        }
 
-			UserMessages userMessage = new()
-			{
-				Supervisor = message.Name!,
-				Message = message.Message.Body
-			};
-			string topic = message.Message.Recipient;
-			SendBroadcast(topic, userMessage);
-		}
+        private string HandleMessageRequest(ClientMessage message)
+        {
+            if (string.IsNullOrWhiteSpace(message.Message.Body))
+            {
+                return CreateErrorMessage("Received message with not body content to forward", ErrorType.Warning);
+            }
 
-		private void SendBroadcast(string topic, object? message)
-		{
-			var serialized = JsonConvert.SerializeObject(message, Formatting.Indented);
-			if (topic is "queue" || topic is "supervisors")
-			{
-				File.WriteAllText(Path.Combine(Environment.CurrentDirectory, $"{topic}.json"), serialized);
-			}
+            Supervisor? supervisor = _supervisors.FirstOrDefault(x => x.Name == message.Name);
+            if (supervisor is null)
+            {
+                return CreateErrorMessage("No supervisor found", ErrorType.Critical);
+            }
+            QueueTicket? student = _queue.FirstOrDefault(x => x.Name == message.Message.Recipient);
+            if (student is null)
+            {
+                return CreateErrorMessage("Recipient not found", ErrorType.Critical);
+            }
+            supervisor.Client = student;
+            supervisor.Status = Status.Occupied;
+            UserMessages userMessage = new()
+            {
+                Supervisor = message.Name,
+                Message = message.Message.Body
+            };
 
-			TopicMessage broadcastMessage = new()
-			{
-				Topic = topic,
-				Message = serialized
-			};
-			_broadcastQueue.Enqueue(broadcastMessage);
-		}
+            _queue.Remove(student);
 
-		private bool HandleHeartbeat(ClientMessage message)
-		{
-			var client = _connectedClients.FirstOrDefault(x => x.ClientId == message.ClientId);
-			if (client is null)
-			{
-				return false;
-			}
-			client.OnHeartbeat();
-			return true;
-		}
+            string topic = message.Message.Recipient;
+            SendBroadcast(topic, userMessage);
+            return "{}";
+        }
 
-		private string CreateErrorMessage(string message, ErrorType errorType)
-		{
-			ErrorMessage errorMessage = new()
-			{
-				Error = errorType,
-				Msg = message
-			};
-			_logger.LogError("{errorType} An error occured: {errorMessage}", errorType, message);
-			return JsonConvert.SerializeObject(errorMessage);
-		}
-	}
+        private void SendBroadcast(string topic, object? message)
+        {
+            var serialized = JsonConvert.SerializeObject(message, Formatting.Indented);
+            if (topic is "queue" || topic is "supervisors")
+            {
+                File.WriteAllText(Path.Combine(Environment.CurrentDirectory, $"{topic}.json"), serialized);
+            }
+
+            TopicMessage broadcastMessage = new()
+            {
+                Topic = topic,
+                Message = serialized
+            };
+            _broadcastQueue.Enqueue(broadcastMessage);
+        }
+
+        private bool HandleHeartbeat(ClientMessage message)
+        {
+            var client = _connectedClients.FirstOrDefault(x => x.ClientId == message.ClientId);
+            if (client is null)
+            {
+                return false;
+            }
+            client.OnHeartbeat();
+            return true;
+        }
+
+        private string CreateErrorMessage(string message, ErrorType errorType)
+        {
+            ErrorMessage errorMessage = new()
+            {
+                Error = errorType,
+                Msg = message
+            };
+            _logger.LogError("{errorType} An error occured: {errorMessage}", errorType, message);
+            return JsonConvert.SerializeObject(errorMessage);
+        }
+    }
 }
