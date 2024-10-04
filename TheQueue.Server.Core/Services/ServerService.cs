@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using NetMQ;
 using NetMQ.Sockets;
 using Newtonsoft.Json;
-using System.ServiceModel.Channels;
 using TheQueue.Server.Core.Enums;
 using TheQueue.Server.Core.Models;
 using TheQueue.Server.Core.Models.BroadcastMessages;
@@ -19,8 +18,13 @@ namespace TheQueue.Server.Core.Services
 
         private bool _serverIsRunning = true;
 
-        private int _port;
-        private int _ticketCounter = 0;
+        private readonly int _port;
+        private int _ticketCounter = 1;
+
+        // TODO: use instead of strings
+        //private static readonly string _topicQueue = "queue";
+        //private static readonly string _topicSupervisors = "supervisors";
+
         private Queue<TopicMessage> _broadcastQueue;
         private List<ConnectedClient> _connectedClients;
         private List<QueueTicket> _queue;
@@ -91,21 +95,21 @@ namespace TheQueue.Server.Core.Services
                         _logger.LogDebug("Deserialized message to ClientMessage object");
 
                         // validation on properties
-                        if (string.IsNullOrWhiteSpace(received.ClientId) || string.IsNullOrWhiteSpace(received.Name))
+                        if (string.IsNullOrWhiteSpace(received.ClientId))
                         {
                             responder.SendFrame(CreateErrorMessage("Missing information", ErrorType.Critical));
                         }
 
                         HandleConnect(received);
 
-                        if (received.SuperVisor.HasValue && received.SuperVisor.Value)
+                        if (received.Supervisor.HasValue && received.Supervisor.Value)
                         {
                             try
                             {
                                 CreateSupervisorIfNotExists(received);
                                 if (received.EnterQueue.HasValue && received.EnterQueue.Value)
                                 {
-                                    responder.SendFrame(HandleSupervisorEnterQueue(received));
+                                    responder.SendFrame(HandleSupervisorEnterQueue(received)); // returns queueticket or null
                                 }
                                 else
                                 {
@@ -225,12 +229,15 @@ namespace TheQueue.Server.Core.Services
             Supervisor supervisor = _supervisors.FirstOrDefault(x => x.Name == supervisorName)
                 ?? throw new Exception(CreateErrorMessage($"No Supervisor with name {supervisorName}", ErrorType.Warning));
 
+            if (status is Status.Available)
+            {
+                supervisor.Client = null;
+            }
             supervisor.Status = status;
         }
 
         private string HandleSupervisorEnterQueue(ClientMessage message)
         {
-            SetSupervisorStatus(message.Name, Status.Available);
 
             _logger.LogInformation("Getting student for Supervisor {supervisor}", message.Name);
 
@@ -238,35 +245,39 @@ namespace TheQueue.Server.Core.Services
             if (queueTicket is null)
             {
                 _logger.LogInformation("No students available for supervision");
+                SetSupervisorStatus(message.Name, Status.Available);
                 return "{}";
             }
+            SetSupervisorStatus(message.Name, Status.Occupied);
             return JsonConvert.SerializeObject(queueTicket);
         }
 
         private QueueTicket CreateStudentAndAddToQueueIfNotExists(ClientMessage message)
         {
+            QueueTicket ticket = new()
+            {
+                Name = message.Name,
+            };
             if (message.EnterQueue!.Value && !string.IsNullOrWhiteSpace(message.Name))
             {
                 if (!_queue.Any(x => x.Name == message.Name))
                 {
-                    QueueTicket ticket = new()
-                    {
-                        Name = message.Name,
-                        Ticket = _ticketCounter++
-                    };
+                    ticket.Ticket = _ticketCounter++;
                     _queue.Add(ticket);
                 }
+                else
+                {
+                    ticket = _queue.First(x => x.Name == message.Name);
+                }
             }
-            var queueTicket = _queue.FirstOrDefault(x => x.Name == message.Name);
-
-            if (queueTicket != null)
-                return queueTicket;
-
-            return new QueueTicket
+            else
             {
-                Name = message.Name ?? message.ClientId,
-                Ticket = -1
-            };
+                if (_queue.Any(x => x.Name == message.Name))
+                {
+                    _queue.Remove(_queue.First(x => x.Name == message.Name));
+                }
+            }
+            return ticket;
         }
 
         private void OnDisconnect(string clientId, string name)
@@ -281,32 +292,36 @@ namespace TheQueue.Server.Core.Services
 
             _connectedClients.Remove(disconnectedClient);
             disconnectedClient.Dispose();
-            if (!_connectedClients.Any(x => x.Name == name) && _queue.Any(x => x.Name == name))
+            if (!_connectedClients.Any(x => x.Name == name))
             {
-                _queue.Remove(_queue.First(x => x.Name == name));
-                SendBroadcast("queue", _queue);
+                if (_queue.Any(x => x.Name == name))
+                {
+                    _queue.Remove(_queue.First(x => x.Name == name));
+                    SendBroadcast("queue", _queue);
+                }
+
+                if (_supervisors.Any(x => x.Name == name))
+                {
+                    _supervisors.Remove(_supervisors.First(x => x.Name == name));
+                    SendBroadcast("supervisors", _supervisors);
+                }
             }
         }
 
         private string HandleMessageRequest(ClientMessage message)
         {
             if (string.IsNullOrWhiteSpace(message.Message.Body))
-            {
                 return CreateErrorMessage("Received message with not body content to forward", ErrorType.Warning);
-            }
 
             Supervisor? supervisor = _supervisors.FirstOrDefault(x => x.Name == message.Name);
             if (supervisor is null)
-            {
                 return CreateErrorMessage("No supervisor found", ErrorType.Critical);
-            }
+
             QueueTicket? student = _queue.FirstOrDefault(x => x.Name == message.Message.Recipient);
             if (student is null)
-            {
                 return CreateErrorMessage("Recipient not found", ErrorType.Critical);
-            }
+
             supervisor.Client = student;
-            supervisor.Status = Status.Occupied;
             UserMessages userMessage = new()
             {
                 Supervisor = message.Name,
