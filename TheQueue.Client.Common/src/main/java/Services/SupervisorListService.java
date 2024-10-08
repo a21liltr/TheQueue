@@ -32,12 +32,9 @@ public class SupervisorListService extends SwingWorker<Void, List<SupervisorStat
             while(!isCancelled()){
                 try {
                     var topic = sub.recvStr();
-                    // var messageType = sub.recvStr();//sub.recvStr(1);
-                    var messageBody = sub.recvStr();//sub.recvStr(2);
+                    var messageBody = sub.recvStr();
 
-                    // System.out.println(messageType);
                     System.out.println(messageBody);
-                    // MessageType receivedType = mapper.readValue("\"" + messageType + "\"", MessageType.class);
                     supervisors = mapper.readValue(messageBody, new TypeReference<List<SupervisorStatus>>(){});
 
                     SwingUtilities.invokeLater(new Runnable() {

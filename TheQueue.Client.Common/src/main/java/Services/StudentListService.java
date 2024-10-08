@@ -35,12 +35,9 @@ public class StudentListService extends SwingWorker<Void, List<QueueTicket>> {
             while(!isCancelled()){
                 try {
                     var topic = sub.recvStr();
-                    // var messageType = sub.recvStr();//sub.recvStr(1);
-                    var messageBody = sub.recvStr();//sub.recvStr(2);
+                    var messageBody = sub.recvStr();
 
-                     // System.out.println(messageType);
                     System.out.println(messageBody);
-                    // MessageType receivedType = mapper.readValue("\"" + messageType + "\"", MessageType.class);
                     queueTickets = mapper.readValue(messageBody, new TypeReference<List<QueueTicket>>(){});
 
                     SwingUtilities.invokeLater(new Runnable() {

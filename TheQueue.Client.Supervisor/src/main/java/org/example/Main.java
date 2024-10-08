@@ -1,11 +1,11 @@
 package org.example;
 
-import Frame.MainFrame;
+import UI.MainFrame;
 
 public class Main {
     public static void main(String[] args) throws Exception {
         System.out.println("Supervisor Client started");
 
-        new MainFrame();
+        new MainFrame(args, false);
     }
 }

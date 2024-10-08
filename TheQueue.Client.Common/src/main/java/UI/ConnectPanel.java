@@ -33,7 +33,7 @@ public class ConnectPanel extends JPanel {
 
     private Thread _heartbeatThread;
 
-    private MessageService _messageService;
+    private final MessageService _messageService;
     private UserMessageService _userMessageService;
 
     public ConnectPanel(String reqConnectionString, String subConnectionString, boolean isStudent) {
@@ -113,10 +113,6 @@ public class ConnectPanel extends JPanel {
     private void LeaveQueue() {
         System.out.println("Leave queue");
 
-        /*if(_heartbeatThread != null) {
-            _heartbeatThread.interrupt();
-        }*/
-
         if (_userMessageService != null && !_userMessageService.isCancelled()) {
             _userMessageService.cancel(true);
         }
@@ -126,9 +122,6 @@ public class ConnectPanel extends JPanel {
         _leaveQueueButton.setVisible(false);
         _enterQueueButton.setVisible(true);
         _handleButton.setVisible(false);
-        // _nameField.setEnabled(true);
-        //_disconnectButton.setVisible(false);
-        //_connectButton.setVisible(true);
     }
 
     private void Handle() {
@@ -164,15 +157,12 @@ public class ConnectPanel extends JPanel {
                     EnterQueue = request.EnterQueue;
                 }
             };
-            //_messageService.SendMessage(supervisorRequest, _reqConnectionString, Object.class);
             _ticket = _messageService.SendMessage(supervisorRequest, _reqConnectionString, QueueTicket.class);
 
             if (_ticket != null && _ticket.getTicket() != 0){
                 String popupMessage = "Message to: " + _ticket.getName() + " Ticket: " + _ticket.getTicket();
                 String result = Popup.ShowInput((JFrame) SwingUtilities.getAncestorOfClass(JFrame.class, this), popupMessage, "Message to Client");
                 if (result == null || result.isEmpty()) {
-                    //request
-                    // _messageService.SendMessage()
                     return;
                 }
 
@@ -182,13 +172,6 @@ public class ConnectPanel extends JPanel {
     }
 
     private void SendHandle() {
-        /*HandleClient request = new HandleClient() {
-            {
-                ClientId = _clientId.toString();
-                NewClient = true;
-            }
-        };*/
-
         SupervisorEnterQueue request = new SupervisorEnterQueue() {
             {
                 ClientId = _clientId.toString();
@@ -203,8 +186,6 @@ public class ConnectPanel extends JPanel {
             String popupMessage = "Message to: " + _ticket.getName() + " Ticket: " + _ticket.getTicket();
             String result = Popup.ShowInput((JFrame) SwingUtilities.getAncestorOfClass(JFrame.class, this), popupMessage, "Message to Client");
             if (result == null || result.isEmpty()) {
-                //request
-                // _messageService.SendMessage()
                 return;
             }
 
