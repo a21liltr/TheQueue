@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using NetMQ;
 using NetMQ.Sockets;
 using Newtonsoft.Json;
+using System.Collections.Concurrent;
 using TheQueue.Server.Core.Enums;
 using TheQueue.Server.Core.Models;
 using TheQueue.Server.Core.Models.BroadcastMessages;
@@ -29,6 +30,7 @@ namespace TheQueue.Server.Core.Services
         private List<ConnectedClient> _connectedClients;
         private List<QueueTicket> _queue;
         private List<Supervisor> _supervisors;
+        private ConcurrentBag<QueueTicket> _ticketQueue;
 
         public ServerService(ILogger<ServerService> logger,
             IConfiguration config)
@@ -39,7 +41,8 @@ namespace TheQueue.Server.Core.Services
             _broadcastQueue = new();
 
             _connectedClients = new();
-
+            _ticketQueue = new();
+            _ticketQueue.OrderBy(x => x.Ticket);
             string queuePath = Path.Combine(Environment.CurrentDirectory, "queue.json");
             var readQueueJson = File.ReadAllText(queuePath);
             if (!string.IsNullOrWhiteSpace(readQueueJson))
