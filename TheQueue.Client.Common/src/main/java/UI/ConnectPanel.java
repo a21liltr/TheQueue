@@ -8,6 +8,8 @@ import Services.UserMessageService;
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.UUID;
 
 /*
@@ -92,7 +94,6 @@ public class ConnectPanel extends JPanel {
         _nameField.setEnabled(false);
         _connectButton.setVisible(false);
         _enterQueueButton.setVisible(true);
-        _handleButton.setVisible(true);
     }
 
     private void EnterQueue() {
@@ -101,9 +102,10 @@ public class ConnectPanel extends JPanel {
         // Start listening for supervisor response
         if (_isStudent) {
             _userMessageService = new UserMessageService(_subConnectionString, _nameField.getText(),(JFrame) SwingUtilities.getAncestorOfClass(JFrame.class, this));
-            // TODO: Make service go to "Done" state. Listen to event and make it possible to reenter queue???
-            //_userMessageService.addPropertyChangeListener();
             _userMessageService.execute();
+        }
+        else {
+            _handleButton.setVisible(true);
         }
 
         _enterQueueButton.setVisible(false);

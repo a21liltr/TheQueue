@@ -42,6 +42,7 @@ public class UserMessageService extends SwingWorker<Void, Void> {
                             Popup.ShowMessage(_frame, message.Supervisor + ": " + message.Message, "Supervisor Message");
                         }
                     });
+                    return null;
                 }
                 catch (Exception ex) {
                     System.out.println(ex);
