@@ -2,8 +2,8 @@
 This project implements a heterogeneous distributed queuing system designed for managing supervision sessions. It consists of three components: a student client, a supervisor client, and a server. Communication between the clients and the server is facilitated through ZeroMQ.
 Application developed by Lili Tran (a21liltr).
 ## Features
-- **Student Client** (TBD): Allows students to join a queue for supervision.
-- **Supervisor Client** (TBD): Enables supervisors to provide supervision, send messages and dequeueing the students once attended.
+- **Student Client** (Java): Allows students to join a queue for supervision.
+- **Supervisor Client** (Java): Enables supervisors to provide supervision, send messages and dequeueing the students once attended.
 - **Server** (C#): Centralized component that handles all communication between student and supervisor clients.
 
 ## Prerequisites
@@ -11,14 +11,16 @@ Application developed by Lili Tran (a21liltr).
 - C#
 - Python
 ### Dependencies
-This project uses the Tinyqueue ZMQ API which can be found here: https://ds.iit.his.se
+- **ZeroMQ/NetMQ**
+- **JamesNK/NewtonSoft.Json**
+- **FasterXML/Jackson**
+- **Tinyqueue API**
 
-#### The following description is taken directly from Tinyqueue. 
+All communication between clients and the server is handled through JSON objects.
 
-Tinyqueue has a ZeroMQ (ZMQ) interface allowing client applications to join the queue and follow any events. All communication between clients and servers take the form of JSON objects.
+Client and server communicates using a publisher/subscriber pattern where the server sends updates to all connected clients, and a request/reply pattern which allows clients to send requests and receive individual responses from the server. The two patterns use separate network ports, so both the server and client maintain two distinct sockets; one for each communication method.
 
-Client and server communicates through two ZMQ patterns, a publisher/subscriber pattern where the server broadcasts updates to all clients, and a request/reply pattern where clients can send requests and get individual responses from the server. The two patterns use different network ports and as such both server and client maintain two sockets for communication, one for each communication pattern. The request/reply and publisher/subscriber patterns are described in Chapter 1 and Chapter 2 of the ZMQ Guide, respectively.
-
+Following are the types of messages from the Tinyqueue API that the server may receive and process.
 ####Broadcast messages
 
 Broadcast messages are published by server to all subscribed clients using the ZMQ pub/sub pattern.
