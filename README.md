@@ -86,6 +86,7 @@ run TheQueue.Server.exe
 # For the clients:
 # Check if JDK 23 is installed
 javac --version  # Check the installed version of JDK
+
 # Perform clean when doing an install 
 mvn clean install -U
 
