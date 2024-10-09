@@ -2,6 +2,8 @@
 {
     public class ConnectionOptions
     {
-        public int Port { get; set; }
+        public int PubPort { get; set; }
+        public int RepPort { get; set; }
+        public string Server { get; set; }
     }
 }

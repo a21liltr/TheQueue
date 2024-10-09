@@ -29,9 +29,9 @@ namespace TheQueue.Server.Core.Services
         private void RunPublish(CancellationToken stoppingToken)
         {
             using (NetMQPoller poller = new() { _queueService.broadcastQueue })
-            using (PublisherSocket publisher = new($"tcp://localhost:{_options.Value.Port}"))
+            using (PublisherSocket publisher = new($"tcp://localhost:{_options.Value.PubPort}"))
             {
-                _logger.LogInformation("PublishService running on port: {port}", _options.Value.Port);
+                _logger.LogInformation("PublishService running on port: {port}", _options.Value.PubPort);
                 _queueService.broadcastQueue.ReceiveReady += (sender, args) =>
                 {
                     while (args.Queue.TryDequeue(out TopicMessage? message, new(1000)))
