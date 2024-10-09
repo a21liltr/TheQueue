@@ -8,7 +8,13 @@ namespace TheQueue.Server.Core
         public static IServiceCollection AddCustomServices(
             this IServiceCollection services)
         {
-            services.AddSingleton<ServerService>();
+            services.AddSingleton<QueueService>();
+            services.AddSingleton<ClientService>();
+            services.AddSingleton<SupervisorService>();
+            services.AddSingleton<StudentService>();
+
+            services.AddHostedService<PublishService>();
+            services.AddHostedService<ReplyService>();
 
             return services;
         }

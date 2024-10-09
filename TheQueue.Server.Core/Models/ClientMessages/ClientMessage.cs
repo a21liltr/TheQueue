@@ -1,14 +1,11 @@
-﻿using TheQueue.Server.Core.Enums;
-using TheQueue.Server.Core.Models.ServerMessages;
-
-namespace TheQueue.Server.Core.Models.ClientMessages
+﻿namespace TheQueue.Server.Core.Models.ClientMessages
 {
-	public class ClientMessage
-	{
-		public string ClientId { get; set; }
-		public string? Name { get; set; }
-		public bool? EnterQueue { get; set; }
-		public bool? Supervisor { get; set; }
-		public Message? Message { get; set; }
+    public class ClientMessage
+    {
+        public string ClientId { get; set; }
+        public string? Name { get; set; }
+        public bool? EnterQueue { get; set; }
+        public bool? Supervisor { get; set; }
+        public Message? Message { get; set; }
     }
 }

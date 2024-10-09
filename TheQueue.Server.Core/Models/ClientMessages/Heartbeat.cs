@@ -2,6 +2,5 @@
 {
     public class Heartbeat : RequestBase
     {
-        public string ClientId { get; set; }
     }
 }

@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using Serilog;
 using TheQueue.Server.Core;
+using TheQueue.Server.Core.Options;
 using TheQueue.Server.Core.Services;
 
 public class Program
@@ -14,6 +15,12 @@ public class Program
         try
         {
             Log.Warning("Application Starting.");
+
+            JsonConvert.DefaultSettings = () => new JsonSerializerSettings
+            {
+                ContractResolver = new CamelCasePropertyNamesContractResolver()
+            };
+
             var host = Host.CreateDefaultBuilder()
                 .ConfigureAppConfiguration((hostContext, configBuilder) =>
                 {
@@ -24,17 +31,18 @@ public class Program
                 })
                 .ConfigureServices((context, services) =>
                 {
+                    services.Configure<ConnectionOptions>(context.Configuration);
+
+                    if (args.Length >= 1 && int.TryParse(args[0], out int port))
+                        context.Configuration.Get<ConnectionOptions>().Port = port;
+
                     services.AddCustomServices();
                 })
                 .UseSerilog((hostingContext, loggerConfiguration) =>
                     loggerConfiguration.ReadFrom.Configuration(hostingContext.Configuration))
                 .Build();
-            var server = host.Services.GetRequiredService<ServerService>();
-            JsonConvert.DefaultSettings = () => new JsonSerializerSettings
-            {
-                ContractResolver = new CamelCasePropertyNamesContractResolver()
-            };
-            server.RunServer();
+
+            host.Run();
         }
         catch (Exception ex)
         {

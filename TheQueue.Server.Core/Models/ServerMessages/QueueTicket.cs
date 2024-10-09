@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json;
-
-namespace TheQueue.Server.Core.Models.ServerMessages
+﻿namespace TheQueue.Server.Core.Models.ServerMessages
 {
     public class QueueTicket
     {

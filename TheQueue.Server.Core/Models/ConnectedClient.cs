@@ -21,8 +21,8 @@ namespace TheQueue.Server.Core.Models
 		}
 		private void Disconnect(object source, ElapsedEventArgs e)
 		{
-            _heartbeatTimer.Stop();
-            OnDisconnect(ClientId, Name);
+			OnDisconnect(ClientId, Name);
+			_heartbeatTimer.Stop();
 		}
 
 		public void OnHeartbeat()
