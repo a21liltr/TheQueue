@@ -532,3 +532,4 @@ dist
 .pnp.*
 
 /TheQueue.Client
+/.idea
