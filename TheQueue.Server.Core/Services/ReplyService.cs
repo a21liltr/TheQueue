@@ -43,9 +43,9 @@ namespace TheQueue.Server.Core.Services
 
         private async Task RunReply(CancellationToken stoppingToken)
         {
-            using (ResponseSocket responder = new($"tcp://localhost:{_options.Value.RepPort + 1}"))
+            using (ResponseSocket responder = new($"tcp://localhost:{_options.Value.RepPort}"))
             {
-                _logger.LogInformation("ReplyService running on port: {port}", _options.Value.RepPort + 1);
+                _logger.LogInformation("ReplyService running on port: {port}", _options.Value.RepPort);
                 while (!stoppingToken.IsCancellationRequested)
                 {
                     try
