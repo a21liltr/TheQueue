@@ -56,3 +56,42 @@ Expected response: *Queue ticket* or ```{}```
     "supervisor": true
 }
 ```
+## Compilation and installation
+```bash
+# Open a terminal (Command Prompt or PowerShell for Windows, Terminal for macOS or Linux)
+
+# Ensure Git is installed
+# Visit https://git-scm.com to download and install console Git if not already installed
+
+# Clone the repository
+git clone https://github.com/a21liltr/TheQueue.git
+
+# Navigate to the project directory
+cd TheQueue
+
+# For the server:
+# Check if .NET SDK is installed
+dotnet --version  # Check the installed version of .NET SDK
+# Visit the official Microsoft website to install or update it if necessary
+
+# Restore dependencies
+dotnet restore
+
+# Compile the project
+dotnet build
+
+# For the clients:
+# Check if JDK 23 is installed
+javac --version  # Check the installed version of JDK
+
+# Perform a clean when doing an install 
+mvn clean install -U
+
+# Compile the clients
+javac TheQueue.Client.Common
+javac TheQueue.Client.Student
+javac TheQueue.Client.Supervisor
+
+# Run the server
+# Run the clients
+```
