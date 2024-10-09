@@ -5,7 +5,7 @@ namespace TheQueue.Server.Core.Models
     public class ConcurrentList<T> : IList<T>
     {
         private object _lock = new();
-        private List<T> _list = new();
+        private readonly List<T> _list = new();
 
         public T this[int index] {
             get { lock (_lock) return _list[index]; }
