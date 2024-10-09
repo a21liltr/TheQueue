@@ -80,17 +80,14 @@ dotnet restore
 # Compile the project
 dotnet build
 
-# Run the project
-run TheQueue.Server.exe
-
 # For the clients:
 # Check if JDK 23 is installed
 javac --version  # Check the installed version of JDK
 
-# Perform clean when doing an install 
+# Perform a clean when doing an install 
 mvn clean install -U
 
-# Compile the project
+# Compile the clients
 javac TheQueue.Client.Common
 javac TheQueue.Client.Student
 javac TheQueue.Client.Supervisor
