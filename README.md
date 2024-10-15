@@ -70,28 +70,47 @@ git clone https://github.com/a21liltr/TheQueue.git
 cd TheQueue
 
 # For the server:
-# Check if .NET SDK is installed
-dotnet --version  # Check the installed version of .NET SDK
+# Make sure .NET SDK is installed
 # Visit the official Microsoft website to install or update it if necessary
 
 # Restore dependencies
 dotnet restore
 
 # Compile the project
-dotnet build
+dotnet build --configuration Release
+
+# Run the server
+# Navigate to TheQueue.Server\bin\Release\net6.0 and run TheQueue.Server.exe.
+# arg1 is argument for Publish port
+# arg2 is argument for Reply port
+# arg3 is argument for host adress
+.\TheQueue.Server.exe [arg1] [arg2] [arg3] 
 
 # For the clients:
-# Check if JDK 23 is installed
-javac --version  # Check the installed version of JDK
+# Make sure JDK 23 is installed
+# Make sure Maven is installed
 
+# Navigate into TheQueue.Client.Common directory and install Maven
 # Perform a clean when doing an install 
 mvn clean install -U
 
-# Compile the clients
-javac TheQueue.Client.Common
-javac TheQueue.Client.Student
-javac TheQueue.Client.Supervisor
+# Navigate into TheQueue.Client.Student directory and build jar file
+mvn package
 
-# Run the server
-# Run the clients
+# Navigate into TheQueue.Client.Supervisor directory and build jar file
+mvn package
+
+# Run the clints
+# Navigate to the Student.jar file in TheQueue.Client.Student/target and run jar file (optional: run with arguments)
+# arg1 is argument for host adress
+# arg2 is argument for Subscription port
+# arg3 is argument for Request port
+java -jar TheQueue.Client.Student-1.0-SNAPSHOT.jar [arg1] [arg2] [arg3] 
+
+
+# Navigate to the Supervisor.jar file in TheQueue.Client.Supervisor/target and run jar file
+# arg1 is argument for host adress
+# arg2 is argument for Subscription port
+# arg3 is argument for Request port
+java -jar TheQueue.Client.Supervisor-1.0-SNAPSHOT.jar [arg1] [arg2] [arg3] 
 ```
