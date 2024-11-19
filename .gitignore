@@ -10,3 +10,6 @@
 /TheQueue.Server/obj
 /TheQueue.Server/bin/Release/net6.0
 /TheQueue.Server.Core/bin/Release/net6.0
+/TheQueue.Client.Student/.idea/vcs.xml
+/TheQueue.Client.Student/dependency-reduced-pom.xml
+/TheQueue.Client.Supervisor/dependency-reduced-pom.xml
