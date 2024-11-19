@@ -86,7 +86,7 @@ namespace TheQueue.Server.Core.Services
                                 }
                                 else
                                 {
-                                    _supervisorService.SetSupervisorStatus(received.Name, Status.Pending);
+                                    _supervisorService.SetSupervisorStatus(received.Name, Status.pending);
                                     responder.SendFrame("{}");
                                 }
                             }

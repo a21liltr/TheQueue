@@ -2,8 +2,8 @@
 {
 	public enum Status
 	{
-		Pending = 0,
-		Available = 1,
-		Occupied = 2
+		pending = 0,
+		available = 1,
+		occupied = 2
 	}
 }

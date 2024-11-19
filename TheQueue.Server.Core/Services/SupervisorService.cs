@@ -21,7 +21,8 @@ namespace TheQueue.Server.Core.Services
             _studentService = studentService;
             _queueService = queueService;
             _logger = logger;
-            _supervisors = new();
+            _supervisors = JsonConvert.DeserializeObject<ConcurrentList<Supervisor>>(
+                File.ReadAllText(Path.Combine(Environment.CurrentDirectory, "supervisors.json"))) ?? new();
         }
 
         public void CreateSupervisorIfNotExists(ClientMessage message)
@@ -34,7 +35,7 @@ namespace TheQueue.Server.Core.Services
                 Supervisor supervisor = new()
                 {
                     Name = message.Name,
-                    Status = Status.Pending
+                    Status = Status.pending
                 };
                 _supervisors.Add(supervisor);
             }
@@ -45,7 +46,7 @@ namespace TheQueue.Server.Core.Services
             Supervisor supervisor = _supervisors.FirstOrDefault(x => x.Name == supervisorName)
                 ?? throw new Exception(CreateErrorMessage($"No Supervisor with name {supervisorName}", ErrorType.Warning));
 
-            if (status is not Status.Occupied)
+            if (status is not Status.occupied)
             {
                 supervisor.Client = null;
             }
@@ -61,10 +62,10 @@ namespace TheQueue.Server.Core.Services
             if (queueTicket is null)
             {
                 _logger.LogInformation("No students available for supervision");
-                SetSupervisorStatus(message.Name, Status.Available);
+                SetSupervisorStatus(message.Name, Status.available);
                 return "{}";
             }
-            SetSupervisorStatus(message.Name, Status.Occupied);
+            SetSupervisorStatus(message.Name, Status.occupied);
             return JsonConvert.SerializeObject(queueTicket);
         }
 

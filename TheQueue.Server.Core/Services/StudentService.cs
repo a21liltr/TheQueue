@@ -1,4 +1,5 @@
-﻿using TheQueue.Server.Core.Models;
+﻿using Newtonsoft.Json;
+using TheQueue.Server.Core.Models;
 using TheQueue.Server.Core.Models.ClientMessages;
 using TheQueue.Server.Core.Models.ServerMessages;
 
@@ -10,7 +11,8 @@ namespace TheQueue.Server.Core.Services
 
         public StudentService()
         {
-            _queue = new();
+            _queue = JsonConvert.DeserializeObject<ConcurrentList<QueueTicket>>(
+                File.ReadAllText(Path.Combine(Environment.CurrentDirectory, "queue.json"))) ?? new();
         }
 
         public QueueTicket CreateStudentAndAddToQueueIfNotExists(ClientMessage message)

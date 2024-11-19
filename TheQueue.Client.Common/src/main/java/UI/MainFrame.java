@@ -25,11 +25,6 @@ public class MainFrame {
         BorderLayout bl = new BorderLayout();
         mainFrame.setLayout(bl);
 
-//        TODO: Remove
-//        JPanel studentList = new StudentList("tcp://ds.iit.his.se:5555");
-//        JPanel supervisorList = new SupervisorList("tcp://ds.iit.his.se:5555");
-//        JPanel connectPanel = new ConnectPanel("tcp://ds.iit.his.se:5556", "tcp://localhost:5555",true);
-
         JPanel studentList = new StudentList("tcp://" + server + ":" + subPort);
         JPanel supervisorList = new SupervisorList("tcp://" + server + ":" + subPort);
         JPanel connectPanel = new ConnectPanel("tcp://" + server + ":" + reqPort,

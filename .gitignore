@@ -8,3 +8,5 @@
 /TheQueue.Server.Core/bin/Debug/net6.0
 /TheQueue.Server.Core/obj
 /TheQueue.Server/obj
+/TheQueue.Server/bin/Release/net6.0
+/TheQueue.Server.Core/bin/Release/net6.0

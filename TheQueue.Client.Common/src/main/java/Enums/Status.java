@@ -1,7 +1,7 @@
 package Enums;
 
 public enum Status {
-    Pending,
-    Available,
-    Occupied
+    pending,
+    available,
+    occupied
 }

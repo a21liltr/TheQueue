@@ -1,11 +1,13 @@
 ﻿using TheQueue.Server.Core.Models.ClientMessages;
 using TheQueue.Server.Core.Models;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace TheQueue.Server.Core.Services
 {
     public class ClientService
     {
+        private static readonly string CLIENT_LIST = "clientList.json";
         private StudentService _studentService;
         private SupervisorService _supervisorService;
         private QueueService _queueService;
@@ -19,7 +21,8 @@ namespace TheQueue.Server.Core.Services
             _supervisorService = supervisorService;
             _queueService = queueService;
             _logger = logger;
-            _connectedClients = new();
+            _connectedClients = JsonConvert.DeserializeObject<ConcurrentList<ConnectedClient>>(
+                File.ReadAllText(Path.Combine(Environment.CurrentDirectory, CLIENT_LIST))) ?? new();
         }
 
         public void HandleConnect(ClientMessage message)
@@ -34,6 +37,8 @@ namespace TheQueue.Server.Core.Services
                 };
                 client.OnDisconnect += OnDisconnect;
                 _connectedClients.Add(client);
+                File.WriteAllText(Path.Combine(Environment.CurrentDirectory, CLIENT_LIST), JsonConvert.SerializeObject(_connectedClients));
+
                 _logger.LogInformation("Connected ClientId {client}", message.ClientId);
             }
         }
@@ -52,6 +57,7 @@ namespace TheQueue.Server.Core.Services
             disconnectedClient.Dispose();
             if (!_connectedClients.Any(x => x.Name == name))
             {
+                File.WriteAllText(Path.Combine(Environment.CurrentDirectory, CLIENT_LIST), JsonConvert.SerializeObject(_connectedClients));
                 if (_studentService._queue.Any(x => x.Name == name))
                 {
                     _studentService._queue.Remove(_studentService._queue.First(x => x.Name == name));
