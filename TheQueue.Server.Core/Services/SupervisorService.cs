@@ -1,10 +1,10 @@
-﻿using TheQueue.Server.Core.Enums;
+﻿using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using TheQueue.Server.Core.Enums;
+using TheQueue.Server.Core.Models;
 using TheQueue.Server.Core.Models.BroadcastMessages;
 using TheQueue.Server.Core.Models.ClientMessages;
 using TheQueue.Server.Core.Models.ServerMessages;
-using TheQueue.Server.Core.Models;
-using Newtonsoft.Json;
-using Microsoft.Extensions.Logging;
 
 namespace TheQueue.Server.Core.Services
 {
@@ -21,8 +21,13 @@ namespace TheQueue.Server.Core.Services
             _studentService = studentService;
             _queueService = queueService;
             _logger = logger;
-            _supervisors = JsonConvert.DeserializeObject<ConcurrentList<Supervisor>>(
+
+            _supervisors = new();
+            if (File.Exists(Path.Combine(Environment.CurrentDirectory, "supervisors.json")))
+            {
+                _supervisors = JsonConvert.DeserializeObject<ConcurrentList<Supervisor>>(
                 File.ReadAllText(Path.Combine(Environment.CurrentDirectory, "supervisors.json"))) ?? new();
+            }
         }
 
         public void CreateSupervisorIfNotExists(ClientMessage message)

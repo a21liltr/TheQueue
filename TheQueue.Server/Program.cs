@@ -6,6 +6,7 @@ using Newtonsoft.Json.Serialization;
 using Serilog;
 using TheQueue.Server.Core;
 using TheQueue.Server.Core.Options;
+using TheQueue.Server.Core.Services;
 
 public class Program
 {
@@ -44,12 +45,14 @@ public class Program
                         services.Configure<ConnectionOptions>(context.Configuration);
                         Log.Warning("Wrong or no arguments given, using default values");
                     }
-
                     services.AddCustomServices();
                 })
                 .UseSerilog((hostingContext, loggerConfiguration) =>
                     loggerConfiguration.ReadFrom.Configuration(hostingContext.Configuration))
                 .Build();
+
+            var clientService = host.Services.GetRequiredService<ClientService>();
+            clientService.LoadClients();
 
             host.Run();
         }

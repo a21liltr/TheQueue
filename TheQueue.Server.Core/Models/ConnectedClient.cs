@@ -15,15 +15,19 @@ namespace TheQueue.Server.Core.Models
 		public event DisconnectEventHandler OnDisconnect;
 		public ConnectedClient()
         {
-			_heartbeatTimer = new System.Timers.Timer(_heartbeatInterval);
-			_heartbeatTimer.Elapsed += Disconnect;
-			_heartbeatTimer.Start();
-		}
-		private void Disconnect(object source, ElapsedEventArgs e)
-		{
-			OnDisconnect(ClientId, Name);
-			_heartbeatTimer.Stop();
-		}
+            _heartbeatTimer = new System.Timers.Timer(_heartbeatInterval);
+            _heartbeatTimer.Elapsed += Disconnect;
+            _heartbeatTimer.Start();
+        }
+
+        private void Disconnect(object source, ElapsedEventArgs e)
+        {
+            if (OnDisconnect != null)
+            {
+                OnDisconnect(ClientId, Name);
+                _heartbeatTimer.Stop();
+            }
+        }
 
 		public void OnHeartbeat()
 		{

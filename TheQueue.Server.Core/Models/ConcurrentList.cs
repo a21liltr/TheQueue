@@ -14,7 +14,7 @@ namespace TheQueue.Server.Core.Models
 
         public int Count => _list.Count;
 
-        public bool IsReadOnly => throw new NotImplementedException();
+        public bool IsReadOnly => false;
 
         public void Add(T item)
         {

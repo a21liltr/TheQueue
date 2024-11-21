@@ -11,8 +11,12 @@ namespace TheQueue.Server.Core.Services
 
         public StudentService()
         {
-            _queue = JsonConvert.DeserializeObject<ConcurrentList<QueueTicket>>(
+            _queue = new();
+            if (File.Exists(Path.Combine(Environment.CurrentDirectory, "queue.json")))
+            {
+                _queue = JsonConvert.DeserializeObject<ConcurrentList<QueueTicket>>(
                 File.ReadAllText(Path.Combine(Environment.CurrentDirectory, "queue.json"))) ?? new();
+            }
         }
 
         public QueueTicket CreateStudentAndAddToQueueIfNotExists(ClientMessage message)

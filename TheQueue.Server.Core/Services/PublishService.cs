@@ -34,9 +34,9 @@ namespace TheQueue.Server.Core.Services
                 _logger.LogInformation("PublishService running on port: {port}", _options.Value.PubPort);
                 _queueService.broadcastQueue.ReceiveReady += (sender, args) =>
                 {
-                    while (args.Queue.TryDequeue(out TopicMessage? message, new(1000)))
+                    try
                     {
-                        try
+                        while (args.Queue.TryDequeue(out TopicMessage? message, new(1000)))
                         {
                             if (message != null)
                             {
@@ -45,10 +45,10 @@ namespace TheQueue.Server.Core.Services
                                 _logger.LogInformation("Published {topic} : {message}", message.Topic, message.Message);
                             }
                         }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "An error occured: {errorMessage}", ex.Message);
-                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "An error occured: {errorMessage}", ex.Message);
                     }
                 };
                 poller.RunAsync();

@@ -21,7 +21,6 @@ import java.util.UUID;
 *
 * */
 public class ConnectPanel extends JPanel {
-    private final JButton _connectButton;
     private final JButton _enterQueueButton;
     private final JButton _leaveQueueButton;
     private final JButton _handleButton;
@@ -47,20 +46,11 @@ public class ConnectPanel extends JPanel {
 
         _nameField = new JTextField("", 10);
 
-        _connectButton = new JButton("Connect");
-        _connectButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                Connect();
-            }
-        });
-
         this.add(_nameField);
-        this.add(_connectButton);
 
         _enterQueueButton = new JButton("Enter Queue");
         _enterQueueButton.addActionListener(e -> EnterQueue());
-        _enterQueueButton.setVisible(false);
+        _enterQueueButton.setVisible(true);
         this.add(_enterQueueButton);
 
         _leaveQueueButton = new JButton("Leave Queue");
@@ -76,7 +66,7 @@ public class ConnectPanel extends JPanel {
         }
     }
 
-    private void Connect() {
+    private void EnterQueue() {
         System.out.println("Connect");
 
         if (_nameField.getText().isEmpty()) {
@@ -84,20 +74,12 @@ public class ConnectPanel extends JPanel {
             return;
         }
 
-        SendEnterQueue(false);
+        SendEnterQueue(true);
 
         if (_heartbeatThread == null || !_heartbeatThread.isAlive()) {
             _heartbeatThread = new Thread(this::Heartbeat);
             _heartbeatThread.start();
         }
-
-        _nameField.setEnabled(false);
-        _connectButton.setVisible(false);
-        _enterQueueButton.setVisible(true);
-    }
-
-    private void EnterQueue() {
-        SendEnterQueue(true);
 
         // Start listening for supervisor response
         if (_isStudent) {
@@ -108,6 +90,7 @@ public class ConnectPanel extends JPanel {
             _handleButton.setVisible(true);
         }
 
+        _nameField.setEnabled(false);
         _enterQueueButton.setVisible(false);
         _leaveQueueButton.setVisible(true);
     }
@@ -137,7 +120,7 @@ public class ConnectPanel extends JPanel {
             {
                 ClientId = _clientId.toString();
                 Name = _nameField.getText();
-                EnterQueue = connect;
+                EnterQueue = _isStudent && connect;
             }
         };
 
@@ -159,17 +142,7 @@ public class ConnectPanel extends JPanel {
                     EnterQueue = request.EnterQueue;
                 }
             };
-            _ticket = _messageService.SendMessage(supervisorRequest, _reqConnectionString, QueueTicket.class);
-
-            if (_ticket != null && _ticket.getTicket() != 0){
-                String popupMessage = "Message to: " + _ticket.getName() + " Ticket: " + _ticket.getTicket();
-                String result = Popup.ShowInput((JFrame) SwingUtilities.getAncestorOfClass(JFrame.class, this), popupMessage, "Message to Client");
-                if (result == null || result.isEmpty()) {
-                    return;
-                }
-
-                SendSupervisorMessage(new Recipient() {{ Recipient = _ticket.getName(); Body = result; }});
-            }
+            _messageService.SendMessage(supervisorRequest, _reqConnectionString, QueueTicket.class);
         }
     }
 

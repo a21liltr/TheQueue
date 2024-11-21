@@ -15,14 +15,35 @@ namespace TheQueue.Server.Core.Services
 
         public ConcurrentList<ConnectedClient> _connectedClients;
 
+        private object _lock = new object();
+
         public ClientService(StudentService studentService, SupervisorService supervisorService, QueueService queueService, ILogger<ClientService> logger)
         {
             _studentService = studentService;
             _supervisorService = supervisorService;
             _queueService = queueService;
             _logger = logger;
-            _connectedClients = JsonConvert.DeserializeObject<ConcurrentList<ConnectedClient>>(
+            _connectedClients = new();
+        }
+
+        public void LoadClients()
+        {
+            if (File.Exists(Path.Combine(Environment.CurrentDirectory, CLIENT_LIST)))
+            {
+                var tempList = JsonConvert.DeserializeObject<List<ConnectedClient>>(
                 File.ReadAllText(Path.Combine(Environment.CurrentDirectory, CLIENT_LIST))) ?? new();
+
+                foreach (var tempClient in tempList)
+                {
+                    ConnectedClient client = new()
+                    {
+                        ClientId = tempClient.ClientId,
+                        Name = tempClient.Name
+                    };
+                    client.OnDisconnect += OnDisconnect;
+                    _connectedClients.Add(client);
+                }
+            }
         }
 
         public void HandleConnect(ClientMessage message)
@@ -57,17 +78,20 @@ namespace TheQueue.Server.Core.Services
             disconnectedClient.Dispose();
             if (!_connectedClients.Any(x => x.Name == name))
             {
-                File.WriteAllText(Path.Combine(Environment.CurrentDirectory, CLIENT_LIST), JsonConvert.SerializeObject(_connectedClients));
-                if (_studentService._queue.Any(x => x.Name == name))
+                lock(_lock)
                 {
-                    _studentService._queue.Remove(_studentService._queue.First(x => x.Name == name));
-                    _queueService.SendBroadcast("queue", _studentService._queue);
-                }
+                    File.WriteAllText(Path.Combine(Environment.CurrentDirectory, CLIENT_LIST), JsonConvert.SerializeObject(_connectedClients));
+                    if (_studentService._queue.Any(x => x.Name == name))
+                    {
+                        _studentService._queue.Remove(_studentService._queue.First(x => x.Name == name));
+                        _queueService.SendBroadcast("queue", _studentService._queue);
+                    }
 
-                if (_supervisorService._supervisors.Any(x => x.Name == name))
-                {
-                    _supervisorService._supervisors.Remove(_supervisorService._supervisors.First(x => x.Name == name));
-                    _queueService.SendBroadcast("supervisors", _supervisorService._supervisors);
+                    if (_supervisorService._supervisors.Any(x => x.Name == name))
+                    {
+                        _supervisorService._supervisors.Remove(_supervisorService._supervisors.First(x => x.Name == name));
+                        _queueService.SendBroadcast("supervisors", _supervisorService._supervisors);
+                    }
                 }
             }
         }

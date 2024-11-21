@@ -8,6 +8,7 @@ namespace TheQueue.Server.Core.Services
     {
         public NetMQQueue<TopicMessage> broadcastQueue;
         private bool disposedValue;
+        private object _lock = new object();
 
         public QueueService()
         {
@@ -19,7 +20,8 @@ namespace TheQueue.Server.Core.Services
             var serialized = JsonConvert.SerializeObject(message, Formatting.Indented);
             if (topic is "queue" || topic is "supervisors")
             {
-                File.WriteAllText(Path.Combine(Environment.CurrentDirectory, $"{topic}.json"), serialized);
+                lock (_lock)
+                    File.WriteAllText(Path.Combine(Environment.CurrentDirectory, $"{topic}.json"), serialized);
             }
 
             TopicMessage broadcastMessage = new()
