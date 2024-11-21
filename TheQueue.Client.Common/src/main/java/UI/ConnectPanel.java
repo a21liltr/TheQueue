@@ -12,14 +12,6 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.UUID;
 
-/*
-*
-*
-*  Has name input and a connect and disconnect button
-*  Can't send empty name and error popup is shown
-*
-*
-* */
 public class ConnectPanel extends JPanel {
     private final JButton _enterQueueButton;
     private final JButton _leaveQueueButton;
@@ -102,7 +94,7 @@ public class ConnectPanel extends JPanel {
             _userMessageService.cancel(true);
         }
 
-        SendEnterQueue(false);
+        _heartbeatThread.interrupt();
 
         _leaveQueueButton.setVisible(false);
         _enterQueueButton.setVisible(true);
