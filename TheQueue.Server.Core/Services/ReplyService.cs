@@ -74,7 +74,6 @@ namespace TheQueue.Server.Core.Services
 
                         _clientService.HandleConnect(received);
 
-                        // TODO: Move entire content of 'if' into supervisor service
                         if (received.Supervisor.HasValue && received.Supervisor.Value)
                         {
                             try

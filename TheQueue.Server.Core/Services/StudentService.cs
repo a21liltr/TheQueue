@@ -25,6 +25,7 @@ namespace TheQueue.Server.Core.Services
             {
                 Name = message.Name,
             };
+
             if (message.EnterQueue!.Value && !string.IsNullOrWhiteSpace(message.Name))
             {
                 if (!_queue.Any(x => x.Name == message.Name))
@@ -37,13 +38,7 @@ namespace TheQueue.Server.Core.Services
                     ticket = _queue.First(x => x.Name == message.Name);
                 }
             }
-            else
-            {
-                if (_queue.Any(x => x.Name == message.Name))
-                {
-                    _queue.Remove(_queue.First(x => x.Name == message.Name));
-                }
-            }
+
             return ticket;
         }
     }

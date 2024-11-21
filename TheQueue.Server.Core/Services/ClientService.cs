@@ -76,11 +76,11 @@ namespace TheQueue.Server.Core.Services
 
             _connectedClients.Remove(disconnectedClient);
             disconnectedClient.Dispose();
-            if (!_connectedClients.Any(x => x.Name == name))
+            lock (_lock)
             {
-                lock(_lock)
+                File.WriteAllText(Path.Combine(Environment.CurrentDirectory, CLIENT_LIST), JsonConvert.SerializeObject(_connectedClients));
+                if (!_connectedClients.Any(x => x.Name == name))
                 {
-                    File.WriteAllText(Path.Combine(Environment.CurrentDirectory, CLIENT_LIST), JsonConvert.SerializeObject(_connectedClients));
                     if (_studentService._queue.Any(x => x.Name == name))
                     {
                         _studentService._queue.Remove(_studentService._queue.First(x => x.Name == name));
